@@ -1,7 +1,7 @@
+import HomeClient from "./pageClient";
+
 export default function Home() {
   return (
-    <div>
-      Hello World
-    </div>
+    <HomeClient/>
   );
 }
