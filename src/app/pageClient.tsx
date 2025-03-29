@@ -2,8 +2,8 @@
 
 const HomeClient = () => {
     return (
-        <div>
-            Word Book
+        <div className="flex justify-center">
+            Homepage
         </div>
     )
 }

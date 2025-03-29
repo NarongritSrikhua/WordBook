@@ -2,7 +2,7 @@
 
 const DashboardClient  = () => {
     return (
-        <div>
+        <div className="flex justify-center">
             Dashboard
         </div>
     )
