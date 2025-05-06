@@ -6,8 +6,8 @@ const ProfileClient = () => {
     const [isEditing, setIsEditing] = useState(false);
     const [activeTab, setActiveTab] = useState('settings');
     const [profile, setProfile] = useState({
-        name: 'John Doe',
-        email: 'john@example.com',
+        name: 'Narongrit Srikhua',
+        email: 'Bee@example.com',
         level: 'Intermediate',
         targetLanguage: 'Thai',
         dailyGoal: '30 minutes',

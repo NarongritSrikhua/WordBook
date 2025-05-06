@@ -32,17 +32,17 @@ const NavBar = () => {
                         >
                             Flashcards
                         </Link>
-                        {/* <Link 
-                            href="/book" 
-                            className={`${isActivePath('/book') ? 'text-[#ff6b8b]' : 'text-gray-600'} hover:text-[#ff6b8b] transition-colors`}
-                        >
-                            Book
-                        </Link> */}
                         <Link 
                             href="/practice" 
                             className={`${isActivePath('/practice') ? 'text-[#ff6b8b]' : 'text-gray-600'} hover:text-[#ff6b8b] transition-colors`}
                         >
                             Practice
+                        </Link>
+                        <Link 
+                            href="/dashboard" 
+                            className={`${isActivePath('/dashboard') ? 'text-[#ff6b8b]' : 'text-gray-600'} hover:text-[#ff6b8b] transition-colors`}
+                        >
+                            Dashboard
                         </Link>
                         <Link 
                             href="/profile" 
