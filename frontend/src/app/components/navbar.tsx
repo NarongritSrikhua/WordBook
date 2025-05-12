@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 const NavBar = () => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isLoggedIn, setIsLoggedIn] = useState(false);
-    const [user, setUser] = useState({ name: '', email: '' });
+    const [user, setUser] = useState({ name: '', email: '', role: '' });
     const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
     const pathname = usePathname();
     const router = useRouter();
@@ -20,7 +20,7 @@ const NavBar = () => {
                     setIsLoggedIn(true);
                     // Get user data
                     const userData = await response.json();
-                    setUser(userData.user || { name: 'User', email: '' });
+                    setUser(userData.user || { name: 'User', email: '', role: '' });
                 } else {
                     setIsLoggedIn(false);
                 }
@@ -40,7 +40,7 @@ const NavBar = () => {
                 credentials: 'include'
             });
             setIsLoggedIn(false);
-            setUser({ name: '', email: '' });
+            setUser({ name: '', email: '', role: '' });
             router.push('/');
             router.refresh();
         } catch (error) {
@@ -87,6 +87,14 @@ const NavBar = () => {
                                 >
                                     Dashboard
                                 </Link>
+                                {user.role === 'admin' && (
+                                    <Link 
+                                        href="/admin/dashboard" 
+                                        className={`${pathname.startsWith('/admin') ? 'text-[#ff6b8b]' : 'text-gray-600'} hover:text-[#ff6b8b] transition-colors`}
+                                    >
+                                        Admin
+                                    </Link>
+                                )}
                                 <div className="relative ml-4">
                                     <button 
                                         onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
@@ -117,6 +125,15 @@ const NavBar = () => {
                                             >
                                                 Settings
                                             </Link>
+                                            {user.role === 'admin' && (
+                                                <Link 
+                                                    href="/admin/dashboard" 
+                                                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                    onClick={() => setIsProfileMenuOpen(false)}
+                                                >
+                                                    Admin Dashboard
+                                                </Link>
+                                            )}
                                             <button 
                                                 onClick={() => {
                                                     handleLogout();
@@ -199,6 +216,15 @@ const NavBar = () => {
                                     >
                                         Dashboard
                                     </Link>
+                                    {user.role === 'admin' && (
+                                        <Link 
+                                            href="/admin/dashboard"
+                                            className={`block px-3 py-2 rounded-md ${pathname.startsWith('/admin') ? 'bg-[#ff6b8b] text-white' : 'text-gray-600'}`}
+                                            onClick={() => setIsMenuOpen(false)}
+                                        >
+                                            Admin Dashboard
+                                        </Link>
+                                    )}
                                     <Link 
                                         href="/profile"
                                         className={`block px-3 py-2 rounded-md ${isActivePath('/profile') ? 'bg-[#ff6b8b] text-white' : 'text-gray-600'}`}
@@ -238,6 +264,15 @@ const NavBar = () => {
                                     >
                                         Sign Up
                                     </Link>
+                                    {!isLoggedIn && (
+                                        <Link 
+                                            href="/admin-login"
+                                            className="block px-3 py-2 rounded-md text-gray-600 hover:bg-gray-100"
+                                            onClick={() => setIsMenuOpen(false)}
+                                        >
+                                            Admin Login
+                                        </Link>
+                                    )}
                                 </>
                             )}
                         </div>

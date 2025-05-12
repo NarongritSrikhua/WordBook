@@ -24,6 +24,7 @@ export async function getSession() {
       id: user.id,
       email: user.email,
       name: user.name,
+      role: user.role
     };
   } catch (error) {
     console.error('Error getting session:', error);
@@ -56,6 +57,13 @@ export function getSessionFromRequest(req: NextRequest) {
     id: user.id,
     email: user.email,
     name: user.name,
+    role: user.role
   };
 }
+
+// Check if the user is an admin
+export function isAdmin(session: any) {
+  return session && session.role === 'admin';
+}
+
 

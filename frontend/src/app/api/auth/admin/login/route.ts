@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { users } from '../../../lib/users';
+import { users } from '../../../../lib/users';
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
@@ -13,13 +13,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       );
     }
     
-    console.log('Login attempt for:', email);
-    console.log('Available users:', users);
+    console.log('Admin login attempt for:', email);
     
     // Find user by email and check password
     const user = users.find(u => u.email === email && u.password === password);
     
-    if (user) {
+    if (user && user.role === 'admin') {
       // Set a simple session cookie
       const response = NextResponse.json(
         { 
@@ -48,20 +47,17 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       return response;
     }
     
-    // Invalid credentials
+    // If user not found or not admin
     return NextResponse.json(
-      { message: 'Invalid email or password' },
+      { message: 'Invalid credentials or insufficient permissions' },
       { status: 401 }
     );
     
   } catch (error) {
-    console.error('Login error:', error);
+    console.error('Admin login error:', error);
     return NextResponse.json(
       { message: 'Internal server error' },
       { status: 500 }
     );
   }
 }
-
-
-

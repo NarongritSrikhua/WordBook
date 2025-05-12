@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import Navbar from "./components/navbar";
+import NavbarWrapper from "./components/navbar-wrapper";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -26,15 +26,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
       <body className="min-h-screen bg-gray-50">
-        <Navbar />
-        <main className="pt-[64px]">{children}</main>
-        {/* <footer className="bg-[#FADADD] mt-16 py-8">
-          <div className="container mx-auto px-4 text-center text-gray-800">
-            <p>© 2024 Word Book. All rights reserved.</p>
-          </div>
-        </footer> */}
+        <NavbarWrapper />
+        {children}
       </body>
     </html>
   );
 }
-

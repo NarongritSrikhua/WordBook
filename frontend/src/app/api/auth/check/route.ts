@@ -11,7 +11,8 @@ export async function GET(req: NextRequest) {
       user: {
         id: session.id,
         name: session.name,
-        email: session.email
+        email: session.email,
+        role: session.role
       }
     });
   }
@@ -21,5 +22,7 @@ export async function GET(req: NextRequest) {
     { status: 401 }
   );
 }
+
+
 
 

@@ -27,8 +27,15 @@ export default function LoginForm() {
         throw new Error(data.message || 'Login failed');
       }
       
-      // Redirect to dashboard on success
-      router.push('/dashboard');
+      // Get user data from response
+      const data = await response.json();
+      
+      // Redirect based on user role
+      if (data.user && data.user.role === 'admin') {
+        router.push('/admin/dashboard');
+      } else {
+        router.push('/dashboard');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
@@ -37,52 +44,74 @@ export default function LoginForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+      <div className="rounded-md shadow-sm -space-y-px">
+        <div>
+          <label htmlFor="email-address" className="sr-only">Email address</label>
+          <input
+            id="email-address"
+            name="email"
+            type="email"
+            autoComplete="email"
+            required
+            className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-[#ff6b8b] focus:border-[#ff6b8b] focus:z-10 sm:text-sm"
+            placeholder="Email address"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </div>
+        <div>
+          <label htmlFor="password" className="sr-only">Password</label>
+          <input
+            id="password"
+            name="password"
+            type="password"
+            autoComplete="current-password"
+            required
+            className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-[#ff6b8b] focus:border-[#ff6b8b] focus:z-10 sm:text-sm"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        </div>
+      </div>
+
       {error && (
-        <div className="bg-red-50 text-red-500 p-3 rounded-md text-sm">
-          {error}
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+          <span className="block sm:inline">{error}</span>
         </div>
       )}
-      
-      <div>
-        <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-          Email
-        </label>
-        <input
-          id="email"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          className="w-full px-3 py-2 border border-gray-300 rounded-md"
-        />
+
+      <div className="flex items-center justify-between">
+        <div className="flex items-center">
+          <input
+            id="remember-me"
+            name="remember-me"
+            type="checkbox"
+            className="h-4 w-4 text-[#ff6b8b] focus:ring-[#ff6b8b] border-gray-300 rounded"
+          />
+          <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
+            Remember me
+          </label>
+        </div>
+
+        <div className="text-sm">
+          <Link href="/forgot-password" className="font-medium text-[#ff6b8b] hover:text-[#ff5277]">
+            Forgot your password?
+          </Link>
+        </div>
       </div>
-      
+
       <div>
-        <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-          Password
-        </label>
-        <input
-          id="password"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          className="w-full px-3 py-2 border border-gray-300 rounded-md"
-        />
-      </div>
-      
-      <button
-        type="submit"
-        disabled={loading}
-        className="w-full bg-[#ff6b8b] text-white py-2 rounded-md hover:bg-[#ff5277] transition-colors disabled:opacity-70"
-      >
-        {loading ? 'Logging in...' : 'Login'}
-      </button>
-      
-      <div className="text-center text-sm">
-        <p>Don't have an account? <Link href="/signup" className="text-[#ff6b8b] hover:underline">Sign up</Link></p>
+        <button
+          type="submit"
+          disabled={loading}
+          className={`group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-[#ff6b8b] hover:bg-[#ff5277] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#ff6b8b] ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
+        >
+          {loading ? 'Signing in...' : 'Sign in'}
+        </button>
       </div>
     </form>
   );
 }
+
