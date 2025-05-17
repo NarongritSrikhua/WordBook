@@ -1,286 +1,301 @@
 'use client';
+
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
+import { useAuth } from '../context/AuthContext';
 
-const NavBar = () => {
-    const [isMenuOpen, setIsMenuOpen] = useState(false);
-    const [isLoggedIn, setIsLoggedIn] = useState(false);
-    const [user, setUser] = useState({ name: '', email: '', role: '' });
-    const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
-    const pathname = usePathname();
-    const router = useRouter();
+export default function Navbar() {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const pathname = usePathname();
+  const { user, logout } = useAuth();
+  
+  const handleLogout = async () => {
+    await logout();
+    setIsProfileOpen(false);
+    window.location.href = '/';
+  };
 
-    useEffect(() => {
-        // Check if user is logged in by looking for the auth cookie
-        const checkLoginStatus = async () => {
-            try {
-                const response = await fetch('/api/auth/check', { credentials: 'include' });
-                if (response.ok && response.status === 200) {
-                    setIsLoggedIn(true);
-                    // Get user data
-                    const userData = await response.json();
-                    setUser(userData.user || { name: 'User', email: '', role: '' });
-                } else {
-                    setIsLoggedIn(false);
-                }
-            } catch (error) {
-                console.error('Error checking login status:', error);
-                setIsLoggedIn(false);
-            }
-        };
-        
-        checkLoginStatus();
-    }, [pathname]);
-
-    const handleLogout = async () => {
-        try {
-            await fetch('/api/auth/logout', { 
-                method: 'POST',
-                credentials: 'include'
-            });
-            setIsLoggedIn(false);
-            setUser({ name: '', email: '', role: '' });
-            router.push('/');
-            router.refresh();
-        } catch (error) {
-            console.error('Error logging out:', error);
-        }
-    };
-
-    const isActivePath = (path: string) => pathname === path;
-
-    return (
-        <nav className="fixed top-0 left-0 w-full bg-white shadow-md z-50">
-            <div className="container mx-auto px-4">
-                <div className="flex justify-between items-center h-16">
-                    {/* Logo */}
-                    <Link href="/" className="flex items-center">
-                        <span className="text-2xl font-bold text-[#ff6b8b]">Word Book</span>
-                    </Link>
-
-                    {/* Desktop Menu */}
-                    <div className="hidden md:flex space-x-8 items-center">
-                        <Link 
-                            href="/" 
-                            className={`${isActivePath('/') ? 'text-[#ff6b8b]' : 'text-gray-600'} hover:text-[#ff6b8b] transition-colors`}
-                        >
-                            Home
-                        </Link>
-                        <Link 
-                            href="/flashcards" 
-                            className={`${isActivePath('/flashcards') ? 'text-[#ff6b8b]' : 'text-gray-600'} hover:text-[#ff6b8b] transition-colors`}
-                        >
-                            Flashcards
-                        </Link>
-                        <Link 
-                            href="/practice" 
-                            className={`${isActivePath('/practice') ? 'text-[#ff6b8b]' : 'text-gray-600'} hover:text-[#ff6b8b] transition-colors`}
-                        >
-                            Practice
-                        </Link>
-                        {isLoggedIn ? (
-                            <>
-                                <Link 
-                                    href="/dashboard" 
-                                    className={`${isActivePath('/dashboard') ? 'text-[#ff6b8b]' : 'text-gray-600'} hover:text-[#ff6b8b] transition-colors`}
-                                >
-                                    Dashboard
-                                </Link>
-                                {user.role === 'admin' && (
-                                    <Link 
-                                        href="/admin/dashboard" 
-                                        className={`${pathname.startsWith('/admin') ? 'text-[#ff6b8b]' : 'text-gray-600'} hover:text-[#ff6b8b] transition-colors`}
-                                    >
-                                        Admin
-                                    </Link>
-                                )}
-                                <div className="relative ml-4">
-                                    <button 
-                                        onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
-                                        className="flex items-center space-x-2 focus:outline-none"
-                                    >
-                                        <div className="w-8 h-8 bg-[#ff6b8b] rounded-full flex items-center justify-center text-white">
-                                            {user.name ? user.name[0].toUpperCase() : 'U'}
-                                        </div>
-                                        <span className="text-gray-700">{user.name}</span>
-                                        <svg className="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                        </svg>
-                                    </button>
-                                    
-                                    {isProfileMenuOpen && (
-                                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10">
-                                            <Link 
-                                                href="/profile" 
-                                                className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                                onClick={() => setIsProfileMenuOpen(false)}
-                                            >
-                                                Profile
-                                            </Link>
-                                            <Link 
-                                                href="/settings" 
-                                                className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                                onClick={() => setIsProfileMenuOpen(false)}
-                                            >
-                                                Settings
-                                            </Link>
-                                            {user.role === 'admin' && (
-                                                <Link 
-                                                    href="/admin/dashboard" 
-                                                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                                    onClick={() => setIsProfileMenuOpen(false)}
-                                                >
-                                                    Admin Dashboard
-                                                </Link>
-                                            )}
-                                            <button 
-                                                onClick={() => {
-                                                    handleLogout();
-                                                    setIsProfileMenuOpen(false);
-                                                }}
-                                                className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                            >
-                                                Logout
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
-                            </>
-                        ) : (
-                            <>
-                                <Link 
-                                    href="/login" 
-                                    className={`${isActivePath('/login') ? 'text-[#ff6b8b]' : 'text-gray-600'} hover:text-[#ff6b8b] transition-colors`}
-                                >
-                                    Login
-                                </Link>
-                                <Link 
-                                    href="/signup" 
-                                    className={`${isActivePath('/signup') ? 'text-[#ff6b8b]' : 'text-gray-600'} hover:text-[#ff6b8b] transition-colors`}
-                                >
-                                    Sign Up
-                                </Link>
-                            </>
-                        )}
-                    </div>
-
-                    {/* Mobile menu button */}
-                    <div className="md:hidden">
-                        <button
-                            onClick={() => setIsMenuOpen(!isMenuOpen)}
-                            className="text-gray-600 hover:text-[#ff6b8b] focus:outline-none"
-                        >
-                            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                {isMenuOpen ? (
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                ) : (
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                                )}
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-
-                {/* Mobile Menu */}
-                {isMenuOpen && (
-                    <div className="md:hidden py-2">
-                        <div className="flex flex-col space-y-2 pb-3">
-                            <Link 
-                                href="/"
-                                className={`block px-3 py-2 rounded-md ${isActivePath('/') ? 'bg-[#ff6b8b] text-white' : 'text-gray-600'}`}
-                                onClick={() => setIsMenuOpen(false)}
-                            >
-                                Home
-                            </Link>
-                            <Link 
-                                href="/flashcards"
-                                className={`block px-3 py-2 rounded-md ${isActivePath('/flashcards') ? 'bg-[#ff6b8b] text-white' : 'text-gray-600'}`}
-                                onClick={() => setIsMenuOpen(false)}
-                            >
-                                Flashcards
-                            </Link>
-                            <Link 
-                                href="/practice"
-                                className={`block px-3 py-2 rounded-md ${isActivePath('/practice') ? 'bg-[#ff6b8b] text-white' : 'text-gray-600'}`}
-                                onClick={() => setIsMenuOpen(false)}
-                            >
-                                Practice
-                            </Link>
-                            {isLoggedIn ? (
-                                <>
-                                    <Link 
-                                        href="/dashboard"
-                                        className={`block px-3 py-2 rounded-md ${isActivePath('/dashboard') ? 'bg-[#ff6b8b] text-white' : 'text-gray-600'}`}
-                                        onClick={() => setIsMenuOpen(false)}
-                                    >
-                                        Dashboard
-                                    </Link>
-                                    {user.role === 'admin' && (
-                                        <Link 
-                                            href="/admin/dashboard"
-                                            className={`block px-3 py-2 rounded-md ${pathname.startsWith('/admin') ? 'bg-[#ff6b8b] text-white' : 'text-gray-600'}`}
-                                            onClick={() => setIsMenuOpen(false)}
-                                        >
-                                            Admin Dashboard
-                                        </Link>
-                                    )}
-                                    <Link 
-                                        href="/profile"
-                                        className={`block px-3 py-2 rounded-md ${isActivePath('/profile') ? 'bg-[#ff6b8b] text-white' : 'text-gray-600'}`}
-                                        onClick={() => setIsMenuOpen(false)}
-                                    >
-                                        Profile
-                                    </Link>
-                                    <div className="px-3 py-2 flex items-center space-x-2">
-                                        <div className="w-6 h-6 bg-[#ff6b8b] rounded-full flex items-center justify-center text-white text-xs">
-                                            {user.name ? user.name[0].toUpperCase() : 'U'}
-                                        </div>
-                                        <span className="text-gray-700 text-sm">{user.name}</span>
-                                    </div>
-                                    <button 
-                                        onClick={() => {
-                                            handleLogout();
-                                            setIsMenuOpen(false);
-                                        }}
-                                        className="block px-3 py-2 rounded-md text-left text-gray-600"
-                                    >
-                                        Logout
-                                    </button>
-                                </>
-                            ) : (
-                                <>
-                                    <Link 
-                                        href="/login"
-                                        className={`block px-3 py-2 rounded-md ${isActivePath('/login') ? 'bg-[#ff6b8b] text-white' : 'text-gray-600'}`}
-                                        onClick={() => setIsMenuOpen(false)}
-                                    >
-                                        Login
-                                    </Link>
-                                    <Link 
-                                        href="/signup"
-                                        className={`block px-3 py-2 rounded-md ${isActivePath('/signup') ? 'bg-[#ff6b8b] text-white' : 'text-gray-600'}`}
-                                        onClick={() => setIsMenuOpen(false)}
-                                    >
-                                        Sign Up
-                                    </Link>
-                                    {!isLoggedIn && (
-                                        <Link 
-                                            href="/admin-login"
-                                            className="block px-3 py-2 rounded-md text-gray-600 hover:bg-gray-100"
-                                            onClick={() => setIsMenuOpen(false)}
-                                        >
-                                            Admin Login
-                                        </Link>
-                                    )}
-                                </>
-                            )}
-                        </div>
-                    </div>
-                )}
+  return (
+    <nav className="bg-white shadow-md">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between h-16">
+          <div className="flex">
+            <div className="flex-shrink-0 flex items-center">
+              <Link href="/" className="text-2xl font-bold text-[#FF6B8B]">
+                WordBook
+              </Link>
             </div>
-        </nav>
-    );
-};
+            <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
+              <Link 
+                href="/" 
+                className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
+                  pathname === '/' 
+                    ? 'border-[#FF6B8B] text-gray-900' 
+                    : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                }`}
+              >
+                Home
+              </Link>
+              <Link 
+                href="/flashcards" 
+                className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
+                  pathname === '/flashcards' 
+                    ? 'border-[#FF6B8B] text-gray-900' 
+                    : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                }`}
+              >
+                Flashcards
+              </Link>
+              <Link 
+                href="/practice" 
+                className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
+                  pathname === '/practice' 
+                    ? 'border-[#FF6B8B] text-gray-900' 
+                    : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                }`}
+              >
+                Practice
+              </Link>
+              <Link 
+                href="/book" 
+                className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
+                  pathname === '/book' 
+                    ? 'border-[#FF6B8B] text-gray-900' 
+                    : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                }`}
+              >
+                Book
+              </Link>
+            </div>
+          </div>
+          <div className="hidden sm:ml-6 sm:flex sm:items-center">
+            {user ? (
+              <div className="ml-3 relative">
+                <div>
+                  <button
+                    type="button"
+                    className="bg-white rounded-full flex text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#FF6B8B]"
+                    id="user-menu-button"
+                    aria-expanded="false"
+                    aria-haspopup="true"
+                    onClick={() => setIsProfileOpen(!isProfileOpen)}
+                  >
+                    <span className="sr-only">Open user menu</span>
+                    <div className="h-8 w-8 rounded-full bg-[#FF6B8B] flex items-center justify-center text-white">
+                      {user.name.charAt(0).toUpperCase()}
+                    </div>
+                  </button>
+                </div>
+                
+                {isProfileOpen && (
+                  <div
+                    className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-10"
+                    role="menu"
+                    aria-orientation="vertical"
+                    aria-labelledby="user-menu-button"
+                    tabIndex={-1}
+                  >
+                    <Link
+                      href="/dashboard"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      role="menuitem"
+                      tabIndex={-1}
+                      id="user-menu-item-0"
+                      onClick={() => setIsProfileOpen(false)}
+                    >
+                      Dashboard
+                    </Link>
+                    <Link
+                      href="/profile"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      role="menuitem"
+                      tabIndex={-1}
+                      id="user-menu-item-1"
+                      onClick={() => setIsProfileOpen(false)}
+                    >
+                      Profile
+                    </Link>
+                    <button
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      role="menuitem"
+                      tabIndex={-1}
+                      id="user-menu-item-2"
+                      onClick={handleLogout}
+                    >
+                      Sign out
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex space-x-4">
+                <Link
+                  href="/login"
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-[#FF6B8B] bg-white hover:bg-gray-50"
+                >
+                  Log in
+                </Link>
+                <Link
+                  href="/signup"
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-[#FF6B8B] hover:bg-[#ff5277]"
+                >
+                  Sign up
+                </Link>
+              </div>
+            )}
+          </div>
+          <div className="-mr-2 flex items-center sm:hidden">
+            <button
+              type="button"
+              className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-[#FF6B8B]"
+              aria-controls="mobile-menu"
+              aria-expanded="false"
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+            >
+              <span className="sr-only">Open main menu</span>
+              <svg
+                className="block h-6 w-6"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                aria-hidden="true"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M4 6h16M4 12h16M4 18h16"
+                />
+              </svg>
+              <svg
+                className="hidden h-6 w-6"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                aria-hidden="true"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
 
-export default NavBar;
+      {isMenuOpen && (
+        <div className="md:hidden">
+          <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+            <Link
+              href="/"
+              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
+            >
+              Home
+            </Link>
+            <Link
+              href="/flashcards"
+              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
+            >
+              Flashcards
+            </Link>
+            <Link
+              href="/practice"
+              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
+            >
+              Practice
+            </Link>
+            <Link
+              href="/book"
+              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
+            >
+              Book
+            </Link>
+          </div>
+          <div className="pt-4 pb-3 border-t border-gray-200">
+            {user ? (
+              <div className="flex items-center px-4">
+                <div className="flex-shrink-0">
+                  <div className="h-10 w-10 rounded-full bg-[#FF6B8B] flex items-center justify-center text-white">
+                    {user.name.charAt(0).toUpperCase()}
+                  </div>
+                </div>
+                <div className="ml-3">
+                  <div className="text-base font-medium text-gray-800">{user.name}</div>
+                  <div className="text-sm font-medium text-gray-500">{user.email}</div>
+                </div>
+                <button
+                  type="button"
+                  className="ml-auto flex-shrink-0 bg-white p-1 rounded-full text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#FF6B8B]"
+                  onClick={() => setIsProfileOpen(!isProfileOpen)}
+                >
+                  <span className="sr-only">Open user menu</span>
+                  <svg
+                    className="h-6 w-6"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    aria-hidden="true"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </button>
+              </div>
+            ) : (
+              <div className="flex space-x-4">
+                <Link
+                  href="/login"
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-[#FF6B8B] bg-white hover:bg-gray-50"
+                >
+                  Log in
+                </Link>
+                <Link
+                  href="/signup"
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-[#FF6B8B] hover:bg-[#ff5277]"
+                >
+                  Sign up
+                </Link>
+              </div>
+            )}
+          </div>
+          {isProfileOpen && (
+            <div className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-10">
+              <Link
+                href="/dashboard"
+                className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                onClick={() => setIsProfileOpen(false)}
+              >
+                Dashboard
+              </Link>
+              <Link
+                href="/profile"
+                className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                onClick={() => setIsProfileOpen(false)}
+              >
+                Profile
+              </Link>
+              <button
+                className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                onClick={handleLogout}
+              >
+                Sign out
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </nav>
+  );
+}

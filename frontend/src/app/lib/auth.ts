@@ -1,69 +1,45 @@
+import { fetchApi } from './api';
 import { cookies } from 'next/headers';
 import { NextRequest } from 'next/server';
-import { users } from './users';
+
+export async function login(email: string, password: string) {
+  return fetchApi('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ email, password }),
+  });
+}
+
+export async function logout() {
+  return fetchApi('/auth/logout', {
+    method: 'POST',
+  });
+}
+
+export function getSessionFromRequest(request: NextRequest) {
+  const cookie = request.cookies.get('auth_session');
+  if (!cookie?.value) return null;
+  
+  try {
+    return JSON.parse(atob(cookie.value.split('.')[1]));
+  } catch (e) {
+    return null;
+  }
+}
 
 export async function getSession() {
+  const cookieStore = cookies();
+  const cookie = (await cookieStore).get('auth_session');
+  if (!cookie?.value) return null;
+  
   try {
-    const cookieStore = cookies();
-    const sessionToken = (await cookieStore).get('auth_session')?.value;
-    
-    if (!sessionToken) {
-      return null;
-    }
-    
-    // Extract user ID from session token (format: user_ID_session)
-    const userId = sessionToken.split('_')[1];
-    if (!userId) return null;
-    
-    // Find the user with this ID
-    const user = users.find(u => u.id === userId);
-    if (!user) return null;
-    
-    // Return user data without password
-    return {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role
-    };
-  } catch (error) {
-    console.error('Error getting session:', error);
+    return JSON.parse(atob(cookie.value.split('.')[1]));
+  } catch (e) {
     return null;
   }
 }
 
-export async function verifySession() {
-  return getSession();
-}
-
-// Helper function to get session from request object (for middleware)
-export function getSessionFromRequest(req: NextRequest) {
-  const sessionToken = req.cookies.get('auth_session')?.value;
-  
-  if (!sessionToken) {
-    return null;
-  }
-  
-  // Extract user ID from session token (format: user_ID_session)
-  const userId = sessionToken.split('_')[1];
-  if (!userId) return null;
-  
-  // Find the user with this ID
-  const user = users.find(u => u.id === userId);
-  if (!user) return null;
-  
-  // Return user data without password
-  return {
-    id: user.id,
-    email: user.email,
-    name: user.name,
-    role: user.role
-  };
-}
-
-// Check if the user is an admin
 export function isAdmin(session: any) {
-  return session && session.role === 'admin';
+  return session?.role === 'admin';
 }
 
 

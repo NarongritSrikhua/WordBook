@@ -16,18 +16,20 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-50">
       <div className="flex">
         {/* Admin Sidebar */}
         <AdminSidebar userName={session.name} />
 
-        {/* Main Content */}
-        <main className="flex-1 ml-64 p-6 overflow-y-auto">
+        {/* Main Content - with responsive margin */}
+        <main className="flex-1 ml-20 md:ml-64 p-6 transition-all duration-300 ease-in-out">
           {children}
         </main>
       </div>
     </div>
   );
 }
+
+
 
 
