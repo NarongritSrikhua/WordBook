@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 
 interface AdminSidebarProps {
   userName: string;
@@ -12,16 +13,14 @@ export default function AdminSidebar({ userName }: AdminSidebarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const { logout } = useAuth(); // Use the logout function from AuthContext
 
   const handleLogout = async () => {
     try {
-      await fetch('/api/auth/logout', { 
-        method: 'POST',
-        credentials: 'include'
-      });
+      await logout(); // Use the centralized logout function
       
-      // Redirect to admin login page after logout
-      router.push('/admin-login');
+      // Redirect to login page after logout
+      router.push('/login');
       router.refresh();
     } catch (error) {
       console.error('Error logging out:', error);
@@ -120,6 +119,22 @@ export default function AdminSidebar({ userName }: AdminSidebarProps) {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
           </svg>
           {!isCollapsed && <span>Content</span>}
+        </Link>
+
+        <Link 
+          href="/admin/flashcards" 
+          className={`mt-1 group flex items-center px-2 py-3 text-base font-medium rounded-md hover:bg-gray-50 transition-colors ${
+            isActive('/admin/flashcards') 
+              ? 'bg-pink-50 text-[#ff6b8b]' 
+              : 'text-gray-700 hover:text-[#ff6b8b]'
+          }`}
+        >
+          <svg className={`${isCollapsed ? 'mx-auto' : 'mr-3'} h-6 w-6 ${
+            isActive('/admin/flashcards') ? 'text-[#ff6b8b]' : 'text-gray-500 group-hover:text-[#ff6b8b]'
+          }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+          </svg>
+          {!isCollapsed && <span>Flashcards</span>}
         </Link>
         
         <Link 

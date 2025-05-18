@@ -27,11 +27,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       id: (users.length + 1).toString(),
       name,
       email,
-      password // In a real app, this would be hashed
+      password, // In a real app, this would be hashed
+      role: 'user' // Add default role
     };
-    
+
     users.push(newUser);
-    
+
     console.log('User registered:', email);
     console.log('Current users:', users);
     

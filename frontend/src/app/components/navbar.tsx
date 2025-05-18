@@ -2,20 +2,32 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '../context/AuthContext';
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const pathname = usePathname();
-  const { user, logout } = useAuth();
+  const router = useRouter();
+  const { user, isAuthenticated, logout } = useAuth();
   
   const handleLogout = async () => {
     await logout();
     setIsProfileOpen(false);
-    window.location.href = '/';
+    router.push('/');
+    router.refresh(); // Force a refresh to update all components
   };
+
+  // Helper function to safely get user initial
+  const getUserInitial = () => {
+    return user?.name ? user.name.charAt(0).toUpperCase() : '?';
+  };
+
+  // Force component to re-render when authentication state changes
+  useEffect(() => {
+    // This empty dependency array ensures the component re-renders when auth state changes
+  }, [isAuthenticated, user]);
 
   return (
     <nav className="bg-white shadow-md">
@@ -83,9 +95,11 @@ export default function Navbar() {
                     onClick={() => setIsProfileOpen(!isProfileOpen)}
                   >
                     <span className="sr-only">Open user menu</span>
-                    <div className="h-8 w-8 rounded-full bg-[#FF6B8B] flex items-center justify-center text-white">
-                      {user.name.charAt(0).toUpperCase()}
-                    </div>
+                    {user && (
+                      <div className="h-8 w-8 rounded-full bg-[#FF6B8B] flex items-center justify-center text-white">
+                        {getUserInitial()}
+                      </div>
+                    )}
                   </button>
                 </div>
                 
@@ -223,12 +237,12 @@ export default function Navbar() {
               <div className="flex items-center px-4">
                 <div className="flex-shrink-0">
                   <div className="h-10 w-10 rounded-full bg-[#FF6B8B] flex items-center justify-center text-white">
-                    {user.name.charAt(0).toUpperCase()}
+                    {getUserInitial()}
                   </div>
                 </div>
                 <div className="ml-3">
-                  <div className="text-base font-medium text-gray-800">{user.name}</div>
-                  <div className="text-sm font-medium text-gray-500">{user.email}</div>
+                  <div className="text-base font-medium text-gray-800">{user.name || 'User'}</div>
+                  <div className="text-sm font-medium text-gray-500">{user.email || ''}</div>
                 </div>
                 <button
                   type="button"

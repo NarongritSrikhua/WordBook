@@ -27,6 +27,12 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Get('profile')
   getProfile(@Request() req) {
-    return req.user;
+    // Make sure this returns the user data in the format expected by the frontend
+    return {
+      id: req.user.id,
+      email: req.user.email,
+      name: req.user.name,
+      role: req.user.role
+    };
   }
 }

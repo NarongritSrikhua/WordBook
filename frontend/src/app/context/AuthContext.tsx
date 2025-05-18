@@ -1,7 +1,8 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { fetchApi } from '../lib/api';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { getClientSession, setSession, clearSession, Session } from '../lib/auth';
 
 interface User {
   id: string;
@@ -13,87 +14,158 @@ interface User {
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  logout: () => Promise<void>;
-  register: (name: string, email: string, password: string) => Promise<void>;
+  isAuthenticated: boolean;
+  login: (email: string, password: string) => Promise<User>;
+  logout: () => void;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextType>({
+  user: null,
+  loading: true,
+  isAuthenticated: false,
+  login: async () => ({ id: '', name: '', email: '', role: '' }),
+  logout: () => {},
+});
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+export const useAuth = () => useContext(AuthContext);
+
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
-    // Check if user is logged in
-    const token = localStorage.getItem('token');
-    if (token) {
-      fetchUserProfile();
-    } else {
-      setLoading(false);
-    }
+    const checkAuth = async () => {
+      try {
+        setLoading(true);
+        
+        // Try to get session from client-side storage
+        const clientSession = getClientSession();
+        if (clientSession) {
+          setUser({
+            id: clientSession.id,
+            name: clientSession.name,
+            email: clientSession.email,
+            role: clientSession.role
+          });
+          return;
+        }
+        
+        // If no session in client storage, try to fetch from API
+        const response = await fetch('/api/auth/me', {
+          credentials: 'include'
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.authenticated && data.user) {
+            setUser(data.user);
+            
+            // Also store in client storage for future use
+            if (data.token) {
+              setSession(data.token);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Auth check error:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    checkAuth();
   }, []);
 
-  const fetchUserProfile = async () => {
-    try {
-      const userData = await fetchApi('/auth/profile');
-      setUser(userData);
-    } catch (error) {
-      console.error('Failed to fetch user profile:', error);
-      localStorage.removeItem('token');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<User> => {
     setLoading(true);
     try {
-      const data = await fetchApi('/auth/login', {
+      const response = await fetch('/api/auth/login', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({ email, password }),
       });
-      
-      localStorage.setItem('token', data.access_token);
-      setUser(data.user);
-      return data;
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  const register = async (name: string, email: string, password: string) => {
-    setLoading(true);
-    try {
-      const data = await fetchApi('/auth/register', {
-        method: 'POST',
-        body: JSON.stringify({ name, email, password }),
-      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to login');
+      }
+
+      const data = await response.json();
       
-      localStorage.setItem('token', data.access_token);
+      // Log the user data to debug
+      console.log('Login response data:', data);
+      console.log('User role from login:', data.user.role);
+      
+      // Set the user in state
       setUser(data.user);
-      return data;
+      setIsAuthenticated(true);
+      
+      // Return the user
+      return data.user;
+    } catch (error: any) {
+      console.error('Login error:', error);
+      throw error;
     } finally {
       setLoading(false);
     }
   };
 
   const logout = async () => {
-    localStorage.removeItem('token');
-    setUser(null);
+    try {
+      // Call logout API to clear server-side cookies
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include',
+      });
+      
+      // Clear client-side cookies and state
+      clearSession();
+      setUser(null);
+      setIsAuthenticated(false);
+      
+      // Force a page refresh to clear any cached state
+      if (typeof window !== 'undefined') {
+        window.localStorage.removeItem('user');
+        window.localStorage.removeItem('token');
+        
+        // Remove any cookies
+        document.cookie = 'token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+        document.cookie = 'auth_session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+      }
+    } catch (error) {
+      console.error('Logout error:', error);
+      
+      // Even if the API call fails, clear local state
+      clearSession();
+      setUser(null);
+      setIsAuthenticated(false);
+      
+      if (typeof window !== 'undefined') {
+        window.localStorage.removeItem('user');
+        window.localStorage.removeItem('token');
+        
+        // Remove any cookies
+        document.cookie = 'token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+        document.cookie = 'auth_session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+      }
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, register }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        isAuthenticated,
+        login,
+        logout,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
-}
-
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-}
+        // Store token in

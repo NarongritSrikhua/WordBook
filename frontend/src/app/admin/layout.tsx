@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { getSession, isAdmin } from '@/app/lib/auth';
+import { getServerSession } from '@/app/lib/server-auth';
 import AdminSidebar from '@/app/components/admin-sidebar';
 import { ReactNode } from 'react';
 
@@ -8,11 +8,22 @@ interface AdminLayoutProps {
 }
 
 export default async function AdminLayout({ children }: AdminLayoutProps) {
-  const session = await getSession();
-
-  // Check if user is admin
-  if (!session || !isAdmin(session)) {
-    redirect('/admin-login');
+  // Get session from server-side
+  const session = await getServerSession();
+  
+  console.log('Admin layout - Session check:', session); // Debug log
+  
+  // Check if user is authenticated
+  if (!session) {
+    console.log('Redirecting to login - No valid session'); // Debug log
+    redirect('/login?callbackUrl=/admin/dashboard');
+  }
+  
+  // Check if user has admin role
+  if (session.role !== 'admin') {
+    console.log('Redirecting to unauthorized - User is not an admin'); // Debug log
+    console.log('User role is:', session.role); // Debug log
+    redirect('/unauthorized');
   }
 
   return (
