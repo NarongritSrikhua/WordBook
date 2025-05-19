@@ -6,27 +6,28 @@ import { Session } from './auth';
 export async function getServerSession(): Promise<Session | null> {
   try {
     const cookieStore = cookies();
-    const token = (await cookieStore).get('auth_session')?.value;
+    const token = cookieStore.get('auth_session')?.value;
     
     if (!token) {
       return null;
     }
     
-    const decoded = jwt.verify(
-      token, 
-      process.env.JWT_SECRET || 'your-secret-key'
-    ) as any;
+    // Make sure the JWT_SECRET is consistent between creation and verification
+    const jwtSecret = process.env.JWT_SECRET || 'your-secret-key';
     
-    if (!decoded) {
+    try {
+      const decoded = jwt.verify(token, jwtSecret) as any;
+      
+      return {
+        id: decoded.sub,
+        name: decoded.name,
+        email: decoded.email,
+        role: decoded.role
+      };
+    } catch (jwtError) {
+      console.error('JWT verification error:', jwtError.message);
       return null;
     }
-    
-    return {
-      id: decoded.sub,
-      name: decoded.name,
-      email: decoded.email,
-      role: decoded.role
-    };
   } catch (error) {
     console.error('Error getting server session:', error);
     return null;

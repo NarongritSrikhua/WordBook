@@ -37,6 +37,9 @@ export async function POST(req: NextRequest) {
     console.log('Backend authentication successful');
     
     // Create a JWT token with user info
+    const jwtSecret = process.env.JWT_SECRET || 'your-secret-key';
+    console.log('Using JWT secret:', jwtSecret.substring(0, 3) + '...');
+
     const token = jwt.sign(
       {
         sub: data.user.id,
@@ -44,7 +47,7 @@ export async function POST(req: NextRequest) {
         email: data.user.email,
         role: data.user.role,
       },
-      process.env.JWT_SECRET || 'your-secret-key',
+      jwtSecret,
       { expiresIn: '7d' }
     );
     
