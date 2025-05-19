@@ -42,13 +42,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         // Try to get session from client-side storage
         const clientSession = getClientSession();
+        console.log('Client session from storage:', clientSession);
+        
         if (clientSession) {
+          console.log('Setting user from client session, role:', clientSession.role);
           setUser({
             id: clientSession.id,
             name: clientSession.name,
             email: clientSession.email,
             role: clientSession.role
           });
+          setIsAuthenticated(true);
           return;
         }
         
@@ -168,4 +172,4 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       {children}
     </AuthContext.Provider>
   );
-        // Store token in
+};

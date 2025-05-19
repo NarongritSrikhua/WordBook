@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 interface Flashcard {
     id: number;
@@ -14,11 +15,11 @@ interface Flashcard {
 
 const FlashcardsClient = () => {
     const [cards, setCards] = useState<Flashcard[]>([
-        { id: 1, front: 'Hello', back: 'สวัสดี', category: 'Greetings', difficulty: 'easy', lastReviewed: null, nextReview: null },
+        { id: 1, front: 'Hello', back: 'สสส', category: 'Greetings', difficulty: 'easy', lastReviewed: null, nextReview: null },
         { id: 2, front: 'Thank you', back: 'ขอบคุณ', category: 'Greetings', difficulty: 'easy', lastReviewed: null, nextReview: null },
         { id: 3, front: 'Goodbye', back: 'ลาก่อน', category: 'Greetings', difficulty: 'easy', lastReviewed: null, nextReview: null },
-        { id: 4, front: 'How are you?', back: 'สบายดีไหม', category: 'Greetings', difficulty: 'medium', lastReviewed: null, nextReview: null },
-        { id: 5, front: 'I don\'t understand', back: 'ฉันไม่เข้าใจ', category: 'Common Phrases', difficulty: 'medium', lastReviewed: null, nextReview: null },
+        { id: 4, front: 'How are you?', back: 'สบายไหม', category: 'Greetings', difficulty: 'medium', lastReviewed: null, nextReview: null },
+        { id: 5, front: 'I don\'t understand', back: 'ไม่เข้าใจ', category: 'Common Phrases', difficulty: 'medium', lastReviewed: null, nextReview: null },
         { id: 6, front: 'Water', back: 'น้ำ', category: 'Food & Drink', difficulty: 'easy', lastReviewed: null, nextReview: null },
     ]);
     
@@ -204,6 +205,23 @@ const FlashcardsClient = () => {
         };
     }, []);
     
+    const router = useRouter();
+
+    useEffect(() => {
+        // Check authentication status on page load
+        const token = document.cookie.includes('auth_session') || document.cookie.includes('token');
+        const localStorageToken = localStorage.getItem('token');
+        
+        console.log('Cookies available:', document.cookie);
+        console.log('LocalStorage token available:', !!localStorageToken);
+        
+        // If no authentication, redirect to login
+        if (!token && !localStorageToken) {
+            console.log('No authentication found, redirecting to login');
+            router.push('/login?callbackUrl=/flashcards');
+        }
+    }, [router]);
+
     return (
         <div className="container mx-auto px-4 py-8 max-w-6xl">
             {/* Header */}
