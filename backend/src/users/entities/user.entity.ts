@@ -1,6 +1,7 @@
 import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
-import { Exclude } from 'class-transformer';
 import { Word } from '../../words/entities/word.entity';
+import { Flashcard } from '../../flashcards/entities/flashcard.entity';
+import { Exclude } from 'class-transformer';
 
 export enum UserRole {
   USER = 'user',
@@ -31,6 +32,9 @@ export class User {
 
   @OneToMany(() => Word, (word) => word.user)
   words: Word[];
+
+  @OneToMany(() => Flashcard, (flashcard) => flashcard.user)
+  flashcards: Flashcard[];
 
   @CreateDateColumn()
   createdAt: Date;
