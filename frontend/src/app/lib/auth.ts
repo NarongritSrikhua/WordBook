@@ -6,6 +6,7 @@ export interface Session {
   name: string;
   email: string;
   role: string;
+  token?: string; // Add token to session
 }
 
 // Get session from request (for API routes)
@@ -18,21 +19,22 @@ export function getSessionFromRequest(req: NextRequest): Session | null {
       return null;
     }
     
-    const decoded = jwt.verify(
-      token, 
-      process.env.JWT_SECRET || 'your-secret-key'
-    ) as any;
+    const jwtSecret = process.env.JWT_SECRET || 'Ghs7f$8z!bXxZk1@WqPl3n2R';
     
-    if (!decoded) {
+    try {
+      const decoded = jwt.verify(token, jwtSecret) as any;
+      
+      return {
+        id: decoded.sub,
+        name: decoded.name,
+        email: decoded.email,
+        role: decoded.role,
+        token: token // Include the raw token
+      };
+    } catch (jwtError) {
+      console.error('JWT verification error:', jwtError.message);
       return null;
     }
-    
-    return {
-      id: decoded.sub,
-      name: decoded.name,
-      email: decoded.email,
-      role: decoded.role
-    };
   } catch (error) {
     console.error('Error getting session from request:', error);
     return null;

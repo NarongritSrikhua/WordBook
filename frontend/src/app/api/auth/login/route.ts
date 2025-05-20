@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
     console.log('Backend authentication successful');
     
     // Create a JWT token with user info
-    const jwtSecret = process.env.JWT_SECRET || 'your-secret-key';
+    const jwtSecret = process.env.JWT_SECRET || 'Ghs7f$8z!bXxZk1@WqPl3n2R';
     console.log('Using JWT secret:', jwtSecret.substring(0, 3) + '...');
 
     const token = jwt.sign(
@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
     
     // Create response with token
     const nextResponse = NextResponse.json({
-      access_token: token,
+      access_token: data.access_token || token, // Use backend token if available
       user: {
         id: data.user.id,
         name: data.user.name,
@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
     // Set cookies for both client and server
     nextResponse.cookies.set({
       name: 'token',
-      value: token,
+      value: data.access_token || token,
       httpOnly: false, // Allow JavaScript access for client-side auth
       secure: process.env.NODE_ENV === 'production',
       maxAge: 60 * 60 * 24 * 7, // 7 days
@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
     // Also set HTTP-only cookie for server-side auth
     nextResponse.cookies.set({
       name: 'auth_session',
-      value: token,
+      value: data.access_token || token,
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       maxAge: 60 * 60 * 24 * 7, // 7 days

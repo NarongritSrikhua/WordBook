@@ -1,30 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+// POST review a flashcard
 export async function POST(
-  req: NextRequest,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  context: { params: { id: string } }
 ) {
+  const id = context.params.id;
+  const backendUrl = process.env.BACKEND_URL || 'http://localhost:3001';
+  
   try {
-    const id = params.id;
-    const body = await req.json();
+    // Get request body
+    const body = await request.json();
     
-    const backendUrl = process.env.BACKEND_URL || 'http://localhost:3001';
+    // Forward the authorization header
+    const authHeader = request.headers.get('authorization');
+    
     const response = await fetch(`${backendUrl}/flashcards/${id}/review`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        // Forward authorization if present
-        ...(req.headers.get('Authorization') 
-          ? { 'Authorization': req.headers.get('Authorization') as string } 
-          : {})
+        ...(authHeader ? { 'Authorization': authHeader } : {})
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify(body)
     });
     
     if (!response.ok) {
-      const error = await response.json();
       return NextResponse.json(
-        { message: error.message || 'Failed to review flashcard' },
+        { message: `Backend error: ${response.statusText}` },
         { status: response.status }
       );
     }
@@ -32,9 +34,9 @@ export async function POST(
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
-    console.error('Error reviewing flashcard:', error);
+    console.error(`Error reviewing flashcard ${id}:`, error);
     return NextResponse.json(
-      { message: 'Internal server error' },
+      { message: 'Failed to review flashcard' },
       { status: 500 }
     );
   }

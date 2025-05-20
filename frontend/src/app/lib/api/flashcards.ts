@@ -1,46 +1,53 @@
-import { fetchApi } from '../api';
+// API functions for flashcards
+import { fetchAPI } from './fetch';
 
 export interface Flashcard {
-  id: number;
+  id?: string;
   front: string;
   back: string;
   category: string;
   difficulty: 'easy' | 'medium' | 'hard';
-  lastReviewed: Date | null;
-  nextReview: Date | null;
+  lastReviewed?: Date | null;
+  nextReview?: Date | null;
 }
 
-export async function getFlashcards() {
-  return fetchApi('/flashcards');
+// Get all flashcards
+export async function getFlashcards(): Promise<Flashcard[]> {
+  return fetchAPI('/api/flashcards');
 }
 
-export async function getFlashcard(id: number) {
-  return fetchApi(`/flashcards/${id}`);
+// Get a single flashcard
+export async function getFlashcard(id: string): Promise<Flashcard> {
+  return fetchAPI(`/api/flashcards/${id}`);
 }
 
-export async function createFlashcard(flashcard: Omit<Flashcard, 'id' | 'lastReviewed' | 'nextReview'>) {
-  return fetchApi('/flashcards', {
+// Create a new flashcard
+export async function createFlashcard(flashcard: Omit<Flashcard, 'id'>): Promise<Flashcard> {
+  return fetchAPI('/api/flashcards', {
     method: 'POST',
-    body: JSON.stringify(flashcard),
+    body: JSON.stringify(flashcard)
   });
 }
 
-export async function updateFlashcard(id: number, flashcard: Partial<Omit<Flashcard, 'id'>>) {
-  return fetchApi(`/flashcards/${id}`, {
+// Update a flashcard
+export async function updateFlashcard(id: string, flashcard: Partial<Flashcard>): Promise<Flashcard> {
+  return fetchAPI(`/api/flashcards/${id}`, {
     method: 'PUT',
-    body: JSON.stringify(flashcard),
+    body: JSON.stringify(flashcard)
   });
 }
 
-export async function deleteFlashcard(id: number) {
-  return fetchApi(`/flashcards/${id}`, {
-    method: 'DELETE',
+// Delete a flashcard
+export async function deleteFlashcard(id: string): Promise<void> {
+  return fetchAPI(`/api/flashcards/${id}`, {
+    method: 'DELETE'
   });
 }
 
-export async function reviewFlashcard(id: number, isCorrect: boolean) {
-  return fetchApi(`/flashcards/${id}/review`, {
+// Review a flashcard
+export async function reviewFlashcard(id: string, isCorrect: boolean): Promise<Flashcard> {
+  return fetchAPI(`/api/flashcards/${id}/review`, {
     method: 'POST',
-    body: JSON.stringify({ isCorrect }),
+    body: JSON.stringify({ isCorrect })
   });
 }

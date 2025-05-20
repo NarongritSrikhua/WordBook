@@ -22,8 +22,14 @@ export class FlashcardsService {
     return this.flashcardsRepository.save(flashcard);
   }
 
-  async findAll(userId: string): Promise<Flashcard[]> {
-    return this.flashcardsRepository.find({ where: { userId } });
+  // รองรับกรณี userId เป็น optional
+  async findAll(userId?: string): Promise<Flashcard[]> {
+    if (userId) {
+      // คืน flashcards ของ user นั้น
+      return this.flashcardsRepository.find({ where: { userId } });
+    }
+    // กรณี public คืน flashcards ทั้งหมด (หรือจะกรองเฉพาะที่ public ได้ถ้ามี field)
+    return this.flashcardsRepository.find();
   }
 
   async findOne(id: string, userId: string): Promise<Flashcard> {

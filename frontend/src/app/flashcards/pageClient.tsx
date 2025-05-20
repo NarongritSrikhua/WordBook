@@ -2,9 +2,11 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { getFlashcards, createFlashcard, reviewFlashcard } from '../lib/api/flashcards';
+import { useAuth } from '../context/AuthContext';
 
 interface Flashcard {
-    id: number;
+    id: string;
     front: string;
     back: string;
     category: string;
@@ -14,128 +16,56 @@ interface Flashcard {
 }
 
 const FlashcardsClient = () => {
-    const [cards, setCards] = useState<Flashcard[]>([
-        { id: 1, front: 'Hello', back: 'สสส', category: 'Greetings', difficulty: 'easy', lastReviewed: null, nextReview: null },
-        { id: 2, front: 'Thank you', back: 'ขอบคุณ', category: 'Greetings', difficulty: 'easy', lastReviewed: null, nextReview: null },
-        { id: 3, front: 'Goodbye', back: 'ลาก่อน', category: 'Greetings', difficulty: 'easy', lastReviewed: null, nextReview: null },
-        { id: 4, front: 'How are you?', back: 'สบายไหม', category: 'Greetings', difficulty: 'medium', lastReviewed: null, nextReview: null },
-        { id: 5, front: 'I don\'t understand', back: 'ไม่เข้าใจ', category: 'Common Phrases', difficulty: 'medium', lastReviewed: null, nextReview: null },
-        { id: 6, front: 'Water', back: 'น้ำ', category: 'Food & Drink', difficulty: 'easy', lastReviewed: null, nextReview: null },
-    ]);
-    
+    const [cards, setCards] = useState<Flashcard[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [currentCardIndex, setCurrentCardIndex] = useState(0);
     const [isFlipped, setIsFlipped] = useState(false);
+    const [animation, setAnimation] = useState('');
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [studyMode, setStudyMode] = useState<'all' | 'due'>('all');
-    const [animation, setAnimation] = useState('');
     const [showAddCard, setShowAddCard] = useState(false);
-    const [newCard, setNewCard] = useState<{front: string, back: string, category: string}>({
+    const [newCard, setNewCard] = useState({
         front: '',
         back: '',
         category: ''
     });
     
-    const categories = Array.from(new Set(cards.map(card => card.category)));
+    const { isAuthenticated, user } = useAuth();
+    const router = useRouter();
     
-    const filteredCards = cards.filter(card => 
-        (selectedCategory === null || card.category === selectedCategory) &&
-        (studyMode === 'all' || (card.nextReview !== null && new Date(card.nextReview) <= new Date()))
-    );
-    
-    const handleCardClick = () => {
-        setIsFlipped(!isFlipped);
-    };
-    
-    const handleNextCard = () => {
-        if (filteredCards.length === 0) return;
-        
-        setAnimation('slide-out-right');
-        setTimeout(() => {
-            setIsFlipped(false);
-            setCurrentCardIndex((currentCardIndex + 1) % filteredCards.length);
-            setAnimation('slide-in-left');
-        }, 300);
-        
-        setTimeout(() => {
-            setAnimation('');
-        }, 600);
-    };
-    
-    const handlePrevCard = () => {
-        if (filteredCards.length === 0) return;
-        
-        setAnimation('slide-out-left');
-        setTimeout(() => {
-            setIsFlipped(false);
-            setCurrentCardIndex((currentCardIndex - 1 + filteredCards.length) % filteredCards.length);
-            setAnimation('slide-in-right');
-        }, 300);
-        
-        setTimeout(() => {
-            setAnimation('');
-        }, 600);
-    };
-    
-    const handleDifficultyRating = (difficulty: 'easy' | 'medium' | 'hard') => {
-        if (filteredCards.length === 0) return;
-        
-        const now = new Date();
-        let nextReviewDate = new Date();
-        
-        // Simple spaced repetition algorithm
-        switch(difficulty) {
-            case 'easy':
-                nextReviewDate.setDate(now.getDate() + 7); // Review in 7 days
-                break;
-            case 'medium':
-                nextReviewDate.setDate(now.getDate() + 3); // Review in 3 days
-                break;
-            case 'hard':
-                nextReviewDate.setDate(now.getDate() + 1); // Review tomorrow
-                break;
+    // Check authentication and fetch flashcards
+    useEffect(() => {
+        // First check if user is authenticated
+        if (!isAuthenticated) {
+            console.log('User not authenticated, redirecting to login');
+            router.push('/login?callbackUrl=/flashcards');
+            return;
         }
         
-        const updatedCards = [...cards];
-        const cardIndex = cards.findIndex(card => card.id === filteredCards[currentCardIndex].id);
-        
-        updatedCards[cardIndex] = {
-            ...updatedCards[cardIndex],
-            lastReviewed: now,
-            nextReview: nextReviewDate
+        const fetchCards = async () => {
+            try {
+                setLoading(true);
+                setError(null);
+                const fetchedCards = await getFlashcards();
+                setCards(fetchedCards);
+            } catch (error) {
+                console.error('Error fetching flashcards:', error);
+                setError('Failed to load flashcards. Please try again.');
+            } finally {
+                setLoading(false);
+            }
         };
         
-        setCards(updatedCards);
-        handleNextCard();
-    };
+        if (isAuthenticated) {
+            fetchCards();
+        }
+    }, [isAuthenticated, router]);
     
-    const handleAddCard = () => {
-        if (newCard.front.trim() === '' || newCard.back.trim() === '') return;
-        
-        const newId = cards.length > 0 ? Math.max(...cards.map(card => card.id)) + 1 : 1;
-        
-        setCards([...cards, {
-            id: newId,
-            front: newCard.front,
-            back: newCard.back,
-            category: newCard.category || 'Uncategorized',
-            difficulty: 'medium',
-            lastReviewed: null,
-            nextReview: null
-        }]);
-        
-        setNewCard({
-            front: '',
-            back: '',
-            category: ''
-        });
-        
-        setShowAddCard(false);
-    };
-    
-    // Add CSS for animations
+    // CSS animations and styles
     useEffect(() => {
         const style = document.createElement('style');
-        style.innerHTML = `
+        style.textContent = `
             @keyframes slideOutRight {
                 from { transform: translateX(0); opacity: 1; }
                 to { transform: translateX(50px); opacity: 0; }
@@ -205,8 +135,7 @@ const FlashcardsClient = () => {
         };
     }, []);
     
-    const router = useRouter();
-
+    // Check authentication status on page load
     useEffect(() => {
         // Check authentication status on page load
         const token = document.cookie.includes('auth_session') || document.cookie.includes('token');
@@ -221,6 +150,121 @@ const FlashcardsClient = () => {
             router.push('/login?callbackUrl=/flashcards');
         }
     }, [router]);
+    
+    // Show loading state
+    if (loading) {
+        return (
+            <div className="flex justify-center items-center min-h-screen">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+            </div>
+        );
+    }
+    
+    // Show error state
+    if (error) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-screen p-4">
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
+                    {error}
+                </div>
+                <button 
+                    onClick={() => window.location.reload()}
+                    className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                >
+                    Try Again
+                </button>
+            </div>
+        );
+    }
+    
+    const categories = Array.from(new Set(cards.map(card => card.category)));
+    
+    const filteredCards = cards.filter(card => 
+        (selectedCategory === null || card.category === selectedCategory) &&
+        (studyMode === 'all' || (card.nextReview !== null && new Date(card.nextReview) <= new Date()))
+    );
+    
+    const handleCardClick = () => {
+        setIsFlipped(!isFlipped);
+    };
+    
+    const handleNextCard = () => {
+        if (filteredCards.length === 0) return;
+        
+        setAnimation('slide-out-right');
+        setTimeout(() => {
+            setIsFlipped(false);
+            setCurrentCardIndex((currentCardIndex + 1) % filteredCards.length);
+            setAnimation('slide-in-left');
+        }, 300);
+        
+        setTimeout(() => {
+            setAnimation('');
+        }, 600);
+    };
+    
+    const handlePrevCard = () => {
+        if (filteredCards.length === 0) return;
+        
+        setAnimation('slide-out-left');
+        setTimeout(() => {
+            setIsFlipped(false);
+            setCurrentCardIndex((currentCardIndex - 1 + filteredCards.length) % filteredCards.length);
+            setAnimation('slide-in-right');
+        }, 300);
+        
+        setTimeout(() => {
+            setAnimation('');
+        }, 600);
+    };
+    
+    const handleDifficultyRating = async (difficulty: 'easy' | 'medium' | 'hard') => {
+        if (filteredCards.length === 0) return;
+        
+        try {
+            const cardId = filteredCards[currentCardIndex].id;
+            const isCorrect = difficulty !== 'hard'; // Assuming 'hard' means incorrect
+            
+            const updatedCard = await reviewFlashcard(cardId, isCorrect);
+            
+            const updatedCards = [...cards];
+            const cardIndex = cards.findIndex(card => card.id === cardId);
+            
+            if (cardIndex !== -1) {
+                updatedCards[cardIndex] = updatedCard;
+                setCards(updatedCards);
+            }
+            
+            handleNextCard();
+        } catch (error) {
+            console.error('Error updating card review:', error);
+        }
+    };
+    
+    const handleAddCard = async () => {
+        if (newCard.front.trim() === '' || newCard.back.trim() === '') return;
+        
+        try {
+            const createdCard = await createFlashcard({
+                front: newCard.front,
+                back: newCard.back,
+                category: newCard.category || 'Uncategorized',
+                difficulty: 'medium'
+            });
+            
+            setCards([...cards, createdCard]);
+            
+            setNewCard({
+                front: '',
+                back: '',
+                category: ''
+            });
+            
+            setShowAddCard(false);
+        } catch (error) {
+            console.error('Error adding card:', error);
+        }
+    };
 
     return (
         <div className="container mx-auto px-4 py-8 max-w-6xl">
@@ -257,7 +301,7 @@ const FlashcardsClient = () => {
                             onClick={() => setStudyMode('due')}
                             className={`px-4 py-2 rounded-lg ${studyMode === 'due' ? 'bg-[#FF6B8B] text-white' : 'bg-gray-100 text-gray-700'} transition-colors`}
                         >
-                            Due for Review
+                            Due Cards
                         </button>
                     </div>
                     
@@ -300,20 +344,21 @@ const FlashcardsClient = () => {
                             </div>
                         </div>
                         
-                        {/* Navigation Buttons */}
-                        <div className="flex justify-between mb-8">
+                        {/* Navigation Controls */}
+                        <div className="flex justify-between items-center mb-6">
                             <button 
                                 onClick={handlePrevCard}
-                                className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg transition-colors flex items-center"
+                                className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors flex items-center"
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
                                     <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
                                 </svg>
                                 Previous
                             </button>
+                            
                             <button 
                                 onClick={handleNextCard}
-                                className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg transition-colors flex items-center"
+                                className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors flex items-center"
                             >
                                 Next
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-1" viewBox="0 0 20 20" fill="currentColor">
@@ -323,101 +368,91 @@ const FlashcardsClient = () => {
                         </div>
                         
                         {/* Difficulty Rating */}
-                        <div className="text-center mb-2">
-                            <p className="text-gray-600 mb-2">How well did you know this?</p>
-                            <div className="flex justify-center gap-4">
-                                <button 
-                                    onClick={() => handleDifficultyRating('hard')}
-                                    className="bg-red-100 hover:bg-red-200 text-red-700 px-4 py-2 rounded-lg transition-colors"
-                                >
-                                    Hard
-                                </button>
-                                <button 
-                                    onClick={() => handleDifficultyRating('medium')}
-                                    className="bg-yellow-100 hover:bg-yellow-200 text-yellow-700 px-4 py-2 rounded-lg transition-colors"
-                                >
-                                    Medium
-                                </button>
-                                <button 
-                                    onClick={() => handleDifficultyRating('easy')}
-                                    className="bg-green-100 hover:bg-green-200 text-green-700 px-4 py-2 rounded-lg transition-colors"
-                                >
-                                    Easy
-                                </button>
-                            </div>
+                        <div className="flex justify-center gap-4">
+                            <button 
+                                onClick={() => handleDifficultyRating('easy')}
+                                className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors"
+                            >
+                                Easy
+                            </button>
+                            <button 
+                                onClick={() => handleDifficultyRating('medium')}
+                                className="bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 transition-colors"
+                            >
+                                Medium
+                            </button>
+                            <button 
+                                onClick={() => handleDifficultyRating('hard')}
+                                className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors"
+                            >
+                                Hard
+                            </button>
                         </div>
                     </div>
                 </div>
             ) : (
                 <div className="text-center py-12 bg-gray-50 rounded-xl">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                    </svg>
-                    <h3 className="text-xl font-bold text-gray-700 mb-2">No cards to study</h3>
+                    <h2 className="text-2xl font-bold text-gray-700 mb-2">No flashcards found</h2>
                     <p className="text-gray-600 mb-6">
-                        {selectedCategory ? `No cards found in the "${selectedCategory}" category.` : 
-                         studyMode === 'due' ? "No cards are due for review." : "No cards available."}
+                        {cards.length === 0 
+                            ? "You haven't created any flashcards yet." 
+                            : "No cards match your current filters."}
                     </p>
                     <button 
                         onClick={() => setShowAddCard(true)}
-                        className="bg-[#FF6B8B] text-white px-4 py-2 rounded-lg hover:bg-[#ff5c7f] transition-colors inline-flex items-center"
+                        className="bg-[#FF6B8B] text-white px-4 py-2 rounded-lg hover:bg-[#ff5c7f] transition-colors"
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
-                        </svg>
-                        Add New Card
+                        Create Your First Card
                     </button>
                 </div>
             )}
             
             {/* Add Card Modal */}
             {showAddCard && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-xl p-6 max-w-md w-full">
-                        <div className="flex justify-between items-center mb-4">
-                            <h2 className="text-xl font-bold text-gray-800">Add New Card</h2>
-                            <button 
-                                onClick={() => setShowAddCard(false)}
-                                className="text-gray-600 hover:text-gray-800"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                    <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md">
+                        <h2 className="text-2xl font-bold text-gray-800 mb-4">Add New Flashcard</h2>
+                        
+                        <div className="mb-4">
+                            <label className="block text-gray-700 text-sm font-bold mb-2">
+                                Front (Question)
+                            </label>
+                            <textarea 
+                                value={newCard.front}
+                                onChange={(e) => setNewCard({...newCard, front: e.target.value})}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B8B]"
+                                rows={3}
+                                placeholder="Enter the question or prompt"
+                            />
                         </div>
-                        <div className="space-y-4">
-                            <div>
-                                <label htmlFor="front" className="block text-sm font-medium text-gray-700">Front</label>
-                                <input 
-                                    type="text" 
-                                    id="front" 
-                                    value={newCard.front}
-                                    onChange={(e) => setNewCard({...newCard, front: e.target.value})}
-                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-                                />
-                            </div>
-                            <div>
-                                <label htmlFor="back" className="block text-sm font-medium text-gray-700">Back</label>
-                                <input 
-                                    type="text" 
-                                    id="back" 
-                                    value={newCard.back}
-                                    onChange={(e) => setNewCard({...newCard, back: e.target.value})}
-                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-                                />
-                            </div>
-                            <div>
-                                <label htmlFor="category" className="block text-sm font-medium text-gray-700">Category</label>
-                                <input 
-                                    type="text" 
-                                    id="category" 
-                                    value={newCard.category}
-                                    onChange={(e) => setNewCard({...newCard, category: e.target.value})}
-                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-                                />
-                            </div>
+                        
+                        <div className="mb-4">
+                            <label className="block text-gray-700 text-sm font-bold mb-2">
+                                Back (Answer)
+                            </label>
+                            <textarea 
+                                value={newCard.back}
+                                onChange={(e) => setNewCard({...newCard, back: e.target.value})}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B8B]"
+                                rows={3}
+                                placeholder="Enter the answer"
+                            />
                         </div>
-                        <div className="mt-6 flex justify-end">
+                        
+                        <div className="mb-4">
+                            <label className="block text-gray-700 text-sm font-bold mb-2">
+                                Category
+                            </label>
+                            <input 
+                                type="text" 
+                                value={newCard.category}
+                                onChange={(e) => setNewCard({...newCard, category: e.target.value})}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B8B]"
+                                placeholder="Enter the category (optional)"
+                            />
+                        </div>
+                        
+                        <div className="flex justify-end">
                             <button 
                                 onClick={handleAddCard}
                                 className="bg-[#FF6B8B] text-white px-4 py-2 rounded-lg hover:bg-[#ff5c7f] transition-colors"
