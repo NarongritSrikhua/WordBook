@@ -65,28 +65,51 @@ export async function PUT(
   try {
     const body = await request.json();
     const cookieHeader = request.headers.get('cookie') || '';
+    const authHeader = request.headers.get('authorization') || '';
+    
+    console.log(`[PUT] Updating flashcard ${id} with data:`, body);
+    console.log(`[PUT] Sending request to: ${backendUrl}/flashcards/${id}`);
+    
+    const headers = {
+      'Content-Type': 'application/json',
+      'Cookie': cookieHeader,
+    };
+    
+    // Add authorization header if present
+    if (authHeader) {
+      headers['Authorization'] = authHeader;
+    } 
+    // Extract token from cookie if no auth header is present
+    else if (cookieHeader) {
+      const tokenMatch = cookieHeader.match(/token=([^;]+)/);
+      if (tokenMatch && tokenMatch[1]) {
+        headers['Authorization'] = `Bearer ${tokenMatch[1]}`;
+        console.log('[PUT] Extracted token from cookie and added to Authorization header');
+      }
+    }
+
+    console.log('[PUT] Headers being sent:', headers);
 
     const response = await fetch(`${backendUrl}/flashcards/${id}`, {
       method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Cookie': cookieHeader,
-      },
+      headers,
       credentials: 'include',
       body: JSON.stringify(body),
     });
+    
+    console.log(`[PUT] Backend response status: ${response.status}`);
 
     if (response.status === 401) {
-      return NextResponse.json({
-        ...body,
-        id: id,
-        updatedAt: new Date().toISOString(),
-      });
+      console.log('[PUT] Authentication failed (401), returning error response');
+      return NextResponse.json(
+        { message: 'Authentication failed. Please log in again.' },
+        { status: 401 }
+      );
     }
 
     if (!response.ok) {
       const errorBody = await response.text();
-      console.error('Error details:', errorBody);
+      console.error('[PUT] Error details:', errorBody);
 
       return NextResponse.json(
         { message: `Backend error: ${response.statusText}` },
@@ -95,9 +118,10 @@ export async function PUT(
     }
 
     const data = await response.json();
+    console.log('[PUT] Successfully updated flashcard, response:', data);
     return NextResponse.json(data);
   } catch (error) {
-    console.error(`Error updating flashcard ${id}:`, error);
+    console.error(`[PUT] Error updating flashcard ${id}:`, error);
     return NextResponse.json(
       { message: 'Failed to update flashcard' },
       { status: 500 }
@@ -116,23 +140,50 @@ export async function DELETE(
 
   try {
     const cookieHeader = request.headers.get('cookie') || '';
+    const authHeader = request.headers.get('authorization') || '';
+    
+    console.log(`[DELETE] Deleting flashcard ${id}`);
+    console.log(`[DELETE] Sending request to: ${backendUrl}/flashcards/${id}`);
+    
+    const headers = {
+      'Content-Type': 'application/json',
+      'Cookie': cookieHeader,
+    };
+    
+    // Add authorization header if present
+    if (authHeader) {
+      headers['Authorization'] = authHeader;
+    } 
+    // Extract token from cookie if no auth header is present
+    else if (cookieHeader) {
+      const tokenMatch = cookieHeader.match(/token=([^;]+)/);
+      if (tokenMatch && tokenMatch[1]) {
+        headers['Authorization'] = `Bearer ${tokenMatch[1]}`;
+        console.log('[DELETE] Extracted token from cookie and added to Authorization header');
+      }
+    }
+
+    console.log('[DELETE] Headers being sent:', headers);
 
     const response = await fetch(`${backendUrl}/flashcards/${id}`, {
       method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-        'Cookie': cookieHeader,
-      },
+      headers,
       credentials: 'include',
     });
+    
+    console.log(`[DELETE] Backend response status: ${response.status}`);
 
     if (response.status === 401) {
-      return NextResponse.json({ success: true });
+      console.log('[DELETE] Authentication failed (401), returning error response');
+      return NextResponse.json(
+        { message: 'Authentication failed. Please log in again.' },
+        { status: 401 }
+      );
     }
 
     if (!response.ok) {
       const errorBody = await response.text();
-      console.error('Error details:', errorBody);
+      console.error('[DELETE] Error details:', errorBody);
 
       return NextResponse.json(
         { message: `Backend error: ${response.statusText}` },
@@ -142,7 +193,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error(`Error deleting flashcard ${id}:`, error);
+    console.error(`[DELETE] Error deleting flashcard ${id}:`, error);
     return NextResponse.json(
       { message: 'Failed to delete flashcard' },
       { status: 500 }

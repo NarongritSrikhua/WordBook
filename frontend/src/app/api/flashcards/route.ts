@@ -9,6 +9,13 @@ function buildHeaders(request: NextRequest): Record<string, string> {
   const cookieHeader = request.headers.get('cookie');
   if (cookieHeader) {
     headers['Cookie'] = cookieHeader;
+    
+    // Extract token from cookie if present
+    const tokenMatch = cookieHeader.match(/token=([^;]+)/);
+    if (tokenMatch && tokenMatch[1]) {
+      headers['Authorization'] = `Bearer ${tokenMatch[1]}`;
+      console.log('[DEBUG] Extracted token from cookie and added to Authorization header');
+    }
   }
 
   const authHeader = request.headers.get('authorization');
@@ -34,7 +41,7 @@ export async function GET(request: NextRequest) {
     const response = await fetch(`${backendUrl}/flashcards`, {
       method: 'GET',
       headers,
-      credentials: 'include', // สำคัญ! ให้ cookie ถูกส่งไป backend
+      credentials: 'include', //  ! ให้ cookie  ส่งไป backend
     });
 
     const contentType = response.headers.get('content-type');
@@ -79,7 +86,7 @@ export async function POST(request: NextRequest) {
     const response = await fetch(`${backendUrl}/flashcards`, {
       method: 'POST',
       headers,
-      credentials: 'include', // สำคัญ!
+      credentials: 'include', //  !
       body: JSON.stringify(body),
     });
 

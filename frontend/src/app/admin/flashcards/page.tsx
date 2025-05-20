@@ -43,7 +43,7 @@ export default function AdminFlashcardsPage() {
       try {
         setLoading(true);
         const fetchedCards = await getFlashcards();
-        setCards(fetchedCards);
+        setCards(fetchedCards as Flashcard[]);
         setError(null);
       } catch (err) {
         console.error('Error fetching flashcards:', err);
@@ -81,7 +81,7 @@ export default function AdminFlashcardsPage() {
         difficulty: newCard.difficulty
       });
       
-      setCards([...cards, createdCard]);
+      setCards([...cards, createdCard as Flashcard]);
       
       setNewCard({
         front: '',
@@ -101,10 +101,20 @@ export default function AdminFlashcardsPage() {
     if (!editingCard) return;
     
     try {
-      const updatedCard = await updateFlashcard(editingCard.id, editingCard);
+      // Make sure we're sending only the fields that should be updated
+      const updateData = {
+        front: editingCard.front,
+        back: editingCard.back,
+        category: editingCard.category,
+        difficulty: editingCard.difficulty
+      };
+      
+      console.log('Sending update with data:', updateData);
+      const updatedCard = await updateFlashcard(editingCard.id, updateData);
+      console.log('Received updated card:', updatedCard);
       
       setCards(cards.map(card => 
-        card.id === updatedCard.id ? updatedCard : card
+        card.id === updatedCard.id ? updatedCard as Flashcard : card
       ));
       
       setShowEditCard(false);

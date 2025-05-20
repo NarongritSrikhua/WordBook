@@ -8,32 +8,33 @@ export async function fetchAPI(endpoint: string, options: RequestInit = {}) {
   // Add auth token if available
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
   if (token) {
-    (defaultHeaders as Record<string, string>)['Authorization'] = `Bearer ${token}`;
+    defaultHeaders['Authorization'] = `Bearer ${token}`;
   }
 
-  try {
-    // Make sure endpoint starts with a slash
-    const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const response = await fetch(endpoint, {
+    ...options,
+    headers: {
+      ...defaultHeaders,
+      ...(options.headers || {}),
+    },
+    credentials: 'include', // Important for cookies
+  });
+
+  // Handle non-JSON responses
+  const contentType = response.headers.get('content-type');
+  if (contentType && contentType.includes('application/json')) {
+    const data = await response.json();
     
-    const response = await fetch(normalizedEndpoint, {
-      ...options,
-      headers: {
-        ...defaultHeaders,
-        ...(options.headers || {}),
-      },
-      credentials: 'include'
-    });
-
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error(`API error: ${response.status}`, errorData);
-      const error = new Error(errorData.message || `API request failed with status ${response.status}`);
-      throw error;
+      throw new Error(data.message || 'API request failed');
     }
-
-    return response.json();
-  } catch (error) {
-    console.error(`Network error for ${endpoint}:`, error);
-    throw error;
+    
+    return data;
+  } else {
+    if (!response.ok) {
+      throw new Error('API request failed');
+    }
+    
+    return await response.text();
   }
 }

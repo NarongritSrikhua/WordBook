@@ -22,13 +22,13 @@ export class FlashcardsService {
     return this.flashcardsRepository.save(flashcard);
   }
 
-  // รองรับกรณี userId เป็น optional
+  //  userId เป็น optional
   async findAll(userId?: string): Promise<Flashcard[]> {
     if (userId) {
-      // คืน flashcards ของ user นั้น
+      //  flashcards ของ user ้น
       return this.flashcardsRepository.find({ where: { userId } });
     }
-    // กรณี public คืน flashcards ทั้งหมด (หรือจะกรองเฉพาะที่ public ได้ถ้ามี field)
+    //  public  flashcards ้หมด (จะกรองเฉพาะ  public ได้ถ้า  field)
     return this.flashcardsRepository.find();
   }
 
@@ -86,4 +86,27 @@ export class FlashcardsService {
     
     return this.flashcardsRepository.save(flashcard);
   }
+
+  async updateAsAdmin(id: string, updateFlashcardDto: UpdateFlashcardDto): Promise<Flashcard> {
+    const flashcard = await this.flashcardsRepository.findOne({ where: { id } });
+    
+    if (!flashcard) {
+      throw new NotFoundException(`Flashcard with ID ${id} not found`);
+    }
+    
+    // Update the flashcard with new data
+    Object.assign(flashcard, updateFlashcardDto);
+    
+    return this.flashcardsRepository.save(flashcard);
+  }
+
+  async removeAsAdmin(id: string): Promise<void> {
+    const result = await this.flashcardsRepository.delete(id);
+    
+    if (result.affected === 0) {
+      throw new NotFoundException(`Flashcard with ID ${id} not found`);
+    }
+  }
 }
+
+
