@@ -232,17 +232,46 @@ export const deletePracticeSet = async (id: string): Promise<void> => {
   });
 };
 
+// Practice History API
 
+// Get practice history
+export async function getPracticeHistory(): Promise<any[]> {
+  try {
+    console.log('Fetching practice history');
+    const response = await fetchAPI('/api/practice/history');
+    console.log(`Fetched ${response.length} practice history entries`);
+    return response;
+  } catch (error) {
+    console.error('Error fetching practice history:', error);
+    return [];
+  }
+}
 
-
-
-
-
-
-
-
-
-
-
-
-
+// Submit practice result
+export async function submitPracticeResult(data: {
+  category?: string;
+  practiceSetId?: string;
+  totalQuestions: number;
+  correctAnswers: number;
+  score?: number;
+  timeTaken?: number;
+}): Promise<any> {
+  try {
+    console.log('Submitting practice result:', data);
+    
+    // Calculate score if not provided
+    if (!data.score && data.totalQuestions > 0) {
+      data.score = Math.round((data.correctAnswers / data.totalQuestions) * 100);
+    }
+    
+    const response = await fetchAPI('/api/practice/submit-result', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    console.log('Practice result submitted successfully:', response);
+    return response;
+  } catch (error) {
+    console.error('Error submitting practice result:', error);
+    throw error;
+  }
+}

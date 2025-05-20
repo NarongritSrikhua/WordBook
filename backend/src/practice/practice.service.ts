@@ -4,6 +4,8 @@ import { Repository, Not, Equal } from 'typeorm';
 import { PracticeQuestion } from './entities/practice.entity';
 import { CreatePracticeDto } from './dto/create-practice.dto';
 import { UpdatePracticeDto } from './dto/update-practice.dto';
+import { SubmitPracticeResultDto } from './dto/submit-practice-result.dto';
+import { PracticeHistory } from './entities/practice-history.entity';
 
 @Injectable()
 export class PracticeService {
@@ -12,6 +14,8 @@ export class PracticeService {
   constructor(
     @InjectRepository(PracticeQuestion)
     private practiceRepository: Repository<PracticeQuestion>,
+    @InjectRepository(PracticeHistory)
+    private practiceHistoryRepository: Repository<PracticeHistory>,
   ) {}
 
   async create(createPracticeDto: CreatePracticeDto): Promise<PracticeQuestion> {
@@ -144,6 +148,57 @@ export class PracticeService {
       return categories;
     } catch (error) {
       throw new InternalServerErrorException('Failed to fetch categories');
+    }
+  }
+
+  async getUserPracticeHistory(userId: string): Promise<PracticeHistory[]> {
+    try {
+      this.logger.log(`[Service] Fetching practice history for user: ${userId}`);
+      
+      // If userId is empty, return empty array
+      if (!userId) {
+        return [];
+      }
+      
+      // Get real data from the database
+      const history = await this.practiceHistoryRepository.find({
+        where: { userId },
+        order: { completedAt: 'DESC' }
+      });
+      
+      this.logger.log(`[Service] Found ${history.length} practice history entries for user ${userId}`);
+      
+      return history;
+    } catch (error) {
+      this.logger.error(`[Service] Error fetching user practice history: ${error.message}`, error.stack);
+      throw error;
+    }
+  }
+
+  async savePracticeResult(userId: string, resultDto: SubmitPracticeResultDto): Promise<PracticeHistory> {
+    try {
+      this.logger.log(`[Service] Saving practice result for user: ${userId}`);
+      
+      // Create new practice history entry
+      const practiceHistory = this.practiceHistoryRepository.create({
+        userId,
+        category: resultDto.category,
+        practiceSetId: resultDto.practiceSetId,
+        totalQuestions: resultDto.totalQuestions,
+        correctAnswers: resultDto.correctAnswers,
+        score: resultDto.score,
+        timeTaken: resultDto.timeTaken,
+        completedAt: new Date()
+      });
+      
+      // Save to database
+      const savedResult = await this.practiceHistoryRepository.save(practiceHistory);
+      
+      this.logger.log(`[Service] Practice result saved with ID: ${savedResult.id}`);
+      return savedResult;
+    } catch (error) {
+      this.logger.error(`[Service] Error saving practice result: ${error.message}`, error.stack);
+      throw error;
     }
   }
 }

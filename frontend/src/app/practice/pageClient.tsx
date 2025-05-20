@@ -9,9 +9,11 @@ import {
   getPracticeSet,
   getCategories,
   PracticeQuestion,
-  PracticeSet
+  PracticeSet,
+  submitPracticeResult
 } from '@/app/lib/api/practice';
 import Image from 'next/image';
+import PracticeCompletion from './components/practice-completion';
 
 export default function PracticeClient() {
     // Rename the state variables to avoid any potential conflicts
@@ -41,6 +43,9 @@ export default function PracticeClient() {
     const [categories, setCategories] = useState<string[]>([]);
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [categoriesError, setCategoriesError] = useState<boolean>(false);
+
+    // Add this state to track if the result has been submitted
+    const [resultSubmitted, setResultSubmitted] = useState(false);
 
     // Fetch practice sets on component mount
     useEffect(() => {
@@ -240,7 +245,10 @@ export default function PracticeClient() {
             setTimerActive(true);
         } else {
             // End of questions, show results
+            console.log('Practice session completed. Showing results.');
+            console.log('Score:', score, 'out of', filteredQuestions.length);
             setShowResults(true);
+            setTimerActive(false);
         }
     };
 
@@ -448,38 +456,91 @@ export default function PracticeClient() {
         );
     }
 
-    // Modify the results screen to include a "Practice Another Set" button
+    // Replace the existing results display with this enhanced version
     if (showResults) {
         return (
-            <div className="container mx-auto px-4 py-8 mt-16">
-                <div className="max-w-md mx-auto bg-white rounded-xl shadow-lg overflow-hidden md:max-w-2xl">
-                    <div className="p-8">
-                        <h2 className="text-2xl font-bold text-center mb-6">Practice Results</h2>
-                        <div className="bg-[#FADADD] rounded-lg p-6 mb-6">
-                            <div className="text-center">
-                                <p className="text-gray-700 mb-2">Your Score</p>
-                                <p className="text-4xl font-bold text-[#FF6B8B]">{score} / {filteredQuestions.length}</p>
-                                <p className="text-gray-600 mt-2">
-                                    {score === filteredQuestions.length 
-                                        ? 'Perfect! Amazing job!' 
-                                        : score >= filteredQuestions.length * 0.7 
-                                            ? 'Great job!' 
-                                            : 'Keep practicing!'}
+            <div className="container mx-auto py-8 px-4">
+                <div className="max-w-md mx-auto bg-white rounded-xl shadow-lg overflow-hidden">
+                    <div className="relative">
+                        <div className="absolute inset-0 bg-gradient-to-r from-[#FF6B8B] to-[#FF8E53] opacity-90"></div>
+                        <div className="relative p-6 text-center text-white">
+                            <h2 className="text-3xl font-bold mb-2">Practice Complete!</h2>
+                            <p className="text-lg opacity-90">Great job on completing your practice session</p>
+                        </div>
+                    </div>
+                    
+                    <div className="p-6">
+                        {/* Score display - Fixed percentage display */}
+                        <div className="flex justify-center mb-6">
+                            <div className="relative w-32 h-32">
+                                <svg className="w-32 h-32" viewBox="0 0 36 36">
+                                    <path
+                                        d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                                        fill="none"
+                                        stroke="#EEEEEE"
+                                        strokeWidth="3"
+                                    />
+                                    <path
+                                        d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                                        fill="none"
+                                        stroke="#FF6B8B"
+                                        strokeWidth="3"
+                                        strokeDasharray={`${Math.round((score / filteredQuestions.length) * 100)}, 100`}
+                                    />
+                                </svg>
+                                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                    <span className="text-3xl font-bold text-gray-800">
+                                        {Math.round((score / filteredQuestions.length) * 100)}
+                                    </span>
+                                    <span className="text-sm font-medium text-gray-600">percent</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        {/* Stats grid */}
+                        <div className="grid grid-cols-2 gap-4 mb-6">
+                            <div className="bg-gray-50 p-4 rounded-lg text-center">
+                                <p className="text-sm text-gray-500 mb-1">Questions</p>
+                                <p className="text-2xl font-bold text-gray-800">{filteredQuestions.length}</p>
+                            </div>
+                            <div className="bg-gray-50 p-4 rounded-lg text-center">
+                                <p className="text-sm text-gray-500 mb-1">Correct</p>
+                                <p className="text-2xl font-bold text-green-600">{score}</p>
+                            </div>
+                            {selectedCategory && (
+                                <div className="bg-gray-50 p-4 rounded-lg text-center">
+                                    <p className="text-sm text-gray-500 mb-1">Category</p>
+                                    <p className="text-lg font-semibold text-blue-600">{selectedCategory}</p>
+                                </div>
+                            )}
+                            <div className="bg-gray-50 p-4 rounded-lg text-center">
+                                <p className="text-sm text-gray-500 mb-1">Time</p>
+                                <p className="text-lg font-semibold text-gray-800">
+                                    {Math.floor((30 * filteredQuestions.length - timer) / 60)}:
+                                    {((30 * filteredQuestions.length - timer) % 60).toString().padStart(2, '0')}
                                 </p>
                             </div>
                         </div>
-                        <div className="flex justify-center space-x-4">
-                            <button 
-                                onClick={selectedSetId ? () => handleSetSelection(selectedSetId) : startRandomPractice}
-                                className="bg-[#FF6B8B] text-white px-6 py-2 rounded-lg hover:bg-opacity-90 transition-colors"
+                        
+                        {/* Buttons */}
+                        <div className="flex flex-col space-y-3">
+                            <button
+                                onClick={restartPractice}
+                                className="w-full py-3 px-4 bg-[#FF6B8B] text-white rounded-lg font-medium hover:bg-[#FF5277] transition-colors shadow-md hover:shadow-lg"
                             >
-                                Practice Again
+                                Try Again
                             </button>
-                            <button 
+                            <button
                                 onClick={backToSetSelection}
-                                className="bg-gray-200 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-300 transition-colors"
+                                className="w-full py-3 px-4 bg-gray-100 text-gray-800 rounded-lg font-medium hover:bg-gray-200 transition-colors"
                             >
-                                Choose Another Set
+                                Back to Practice Sets
+                            </button>
+                            <button
+                                onClick={() => router.push('/practice/history')}
+                                className="w-full py-3 px-4 bg-white text-[#FF6B8B] border border-[#FF6B8B] rounded-lg font-medium hover:bg-pink-50 transition-colors"
+                            >
+                                View History
                             </button>
                         </div>
                     </div>

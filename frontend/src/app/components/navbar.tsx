@@ -71,6 +71,16 @@ export default function Navbar() {
               >
                 Practice
               </Link>
+              <Link 
+                href="/practice/history" 
+                className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
+                  pathname === '/practice/history' 
+                    ? 'border-[#FF6B8B] text-gray-900' 
+                    : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                }`}
+              >
+                History
+              </Link>
               {/* <Link 
                 href="/book" 
                 className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
@@ -242,10 +252,10 @@ export default function Navbar() {
               Practice
             </Link>
             <Link
-              href="/book"
+              href="/practice/history"
               className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
             >
-              Book
+              History
             </Link>
           </div>
           <div className="pt-4 pb-3 border-t border-gray-200">
