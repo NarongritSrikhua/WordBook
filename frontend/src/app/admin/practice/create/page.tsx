@@ -398,15 +398,28 @@ export default function CreatePracticeSetPage() {
                       </div>
                       
                       <div className="flex-grow">
-                        <div className="flex items-center mb-2">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium mr-2 ${
+                        <div className="flex items-center mb-2 gap-2">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                             question.type === 'text' ? 'bg-blue-100 text-blue-800' : 
                             question.type === 'image' ? 'bg-green-100 text-green-800' : 
                             'bg-purple-100 text-purple-800'
                           }`}>
                             {question.type.charAt(0).toUpperCase() + question.type.slice(1)}
                           </span>
-                          <span className="text-sm text-gray-500">ID: {question.id.slice(0, 8)}...</span>
+                          <span className={`text-xs font-medium px-2 py-1 rounded ${
+                            question.difficulty === 'easy' ? 'bg-green-100 text-green-800' :
+                            question.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                            question.difficulty === 'hard' ? 'bg-red-100 text-red-800' :
+                            'bg-gray-100 text-gray-800'
+                            }`}>
+                              {question.difficulty?.toUpperCase() || 'MEDIUM'}
+                            </span>
+                            {question.category && (
+                              <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded">
+                                {question.category}
+                              </span>
+                            )}
+                          {/* <span className="text-sm text-gray-500">ID: {question.id.slice(0, 8)}...</span> */}
                         </div>
                         
                         {question.type === 'text' && (

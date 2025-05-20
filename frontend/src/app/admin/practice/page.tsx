@@ -13,7 +13,7 @@ import {
   PracticeQuestion,
   CreatePracticeQuestionDto
 } from '@/app/lib/api/practice';
-import { getCategories, Category } from '@/app/lib/api/categories';
+import { getCategories } from '@/app/lib/api/practice';
 import { getFlashcards } from '@/app/lib/api/flashcards';
 
 interface NewQuestionForm extends CreatePracticeQuestionDto {}
@@ -27,7 +27,7 @@ export default function AdminPracticePage() {
   const [showAddQuestion, setShowAddQuestion] = useState(false);
   const [showEditQuestion, setShowEditQuestion] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<PracticeQuestion | null>(null);
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
   const [newQuestion, setNewQuestion] = useState<NewQuestionForm>({
     type: 'text',
     word: '',
@@ -78,10 +78,16 @@ export default function AdminPracticePage() {
   const fetchCategories = async () => {
     try {
       const data = await getCategories();
-      setCategories(data);
+      if (Array.isArray(data) && data.length > 0) {
+        setCategories(data);
+      } else {
+        // Default categories if none are returned
+        setCategories(['General Knowledge', 'Mathematics', 'Science', 'History', 'Geography', 'Language']);
+      }
     } catch (err) {
       console.error('Error fetching categories:', err);
-      // Don't set error state here to avoid blocking the main functionality
+      // Set default categories to avoid breaking the UI
+      setCategories(['General Knowledge', 'Mathematics', 'Science', 'History', 'Geography', 'Language']);
     }
   };
 
@@ -444,17 +450,31 @@ export default function AdminPracticePage() {
         </div>
       )}
 
-      {/* Add Question Modal */}
+      {/* Add Question Modal with scrolling capability */}
       {showAddQuestion && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4">Add New Practice Question</h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto">
+          <div 
+            className="fixed inset-0 bg-black opacity-50" 
+            onClick={() => setShowAddQuestion(false)}
+          ></div>
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md z-50 relative my-8 mx-auto max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-gray-800">Add New Practice Question</h2>
+              <button
+                onClick={() => setShowAddQuestion(false)}
+                className="text-gray-500 hover:text-gray-700 focus:outline-none"
+              >
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
             
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Question Type</label>
                 <select
-                  className="w-full p-2 border rounded-md"
+                  className="w-full p-2 border rounded-md focus:ring-[#ff6b8b] focus:border-[#ff6b8b]"
                   value={newQuestion.type}
                   onChange={(e) => setNewQuestion({...newQuestion, type: e.target.value as 'text' | 'image' | 'fill'})}
                 >
@@ -464,158 +484,188 @@ export default function AdminPracticePage() {
                 </select>
               </div>
 
-              {/* Text Question Fields */}
               {newQuestion.type === 'text' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Word</label>
-                  <input
-                    type="text"
-                    className="w-full p-2 border rounded-md"
-                    value={newQuestion.word || ''}
-                    onChange={(e) => setNewQuestion({...newQuestion, word: e.target.value})}
-                  />
-                  <div className="mt-2">
-                    <button
-                      type="button"
-                      onClick={() => setShowFlashcardSelector(true)}
-                      className="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                    >
-                      <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
-                      </svg>
-                      Select from Flashcards
-                    </button>
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Word</label>
+                    <input
+                      type="text"
+                      className="w-full p-2 border rounded-md focus:ring-[#ff6b8b] focus:border-[#ff6b8b]"
+                      value={newQuestion.word || ''}
+                      onChange={(e) => setNewQuestion({...newQuestion, word: e.target.value})}
+                    />
+                    <div className="mt-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowFlashcardSelector(true)}
+                        className="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-[#ff6b8b] hover:bg-[#ff5277] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#ff6b8b]"
+                      >
+                        <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
+                        </svg>
+                        Select from Flashcards
+                      </button>
+                    </div>
                   </div>
-                </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Translation</label>
+                    <input
+                      type="text"
+                      className="w-full p-2 border rounded-md focus:ring-[#ff6b8b] focus:border-[#ff6b8b]"
+                      value={newQuestion.translation || ''}
+                      onChange={(e) => handleTranslationChange(e.target.value)}
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Options (Multiple Choice)</label>
+                    <div className="space-y-2">
+                      {newQuestion.options?.map((option, index) => (
+                        <input
+                          key={index}
+                          type="text"
+                          className="w-full p-2 border rounded-md focus:ring-[#ff6b8b] focus:border-[#ff6b8b]"
+                          value={option}
+                          onChange={(e) => handleOptionChange(index, e.target.value)}
+                          placeholder={`Option ${index + 1}`}
+                        />
+                      ))}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Note: One option must match the translation exactly.
+                    </p>
+                  </div>
+                </>
               )}
 
-              {/* Image Question Fields */}
               {newQuestion.type === 'image' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Image URL</label>
-                  <input
-                    type="text"
-                    className="w-full p-2 border rounded-md"
-                    value={newQuestion.imageUrl || ''}
-                    onChange={(e) => setNewQuestion({...newQuestion, imageUrl: e.target.value})}
-                    placeholder="/images/example.jpg"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Images should be placed in the public/images folder
-                  </p>
-                </div>
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Image URL</label>
+                    <input
+                      type="text"
+                      className="w-full p-2 border rounded-md focus:ring-[#ff6b8b] focus:border-[#ff6b8b]"
+                      value={newQuestion.imageUrl || ''}
+                      onChange={(e) => setNewQuestion({...newQuestion, imageUrl: e.target.value})}
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Translation</label>
+                    <input
+                      type="text"
+                      className="w-full p-2 border rounded-md focus:ring-[#ff6b8b] focus:border-[#ff6b8b]"
+                      value={newQuestion.translation || ''}
+                      onChange={(e) => handleTranslationChange(e.target.value)}
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Options (Multiple Choice)</label>
+                    <div className="space-y-2">
+                      {newQuestion.options?.map((option, index) => (
+                        <input
+                          key={index}
+                          type="text"
+                          className="w-full p-2 border rounded-md focus:ring-[#ff6b8b] focus:border-[#ff6b8b]"
+                          value={option}
+                          onChange={(e) => handleOptionChange(index, e.target.value)}
+                          placeholder={`Option ${index + 1}`}
+                        />
+                      ))}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Note: One option must match the translation exactly.
+                    </p>
+                  </div>
+                </>
               )}
 
-              {/* Fill in the Blank Question Fields */}
               {newQuestion.type === 'fill' && (
                 <>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Fill Prompt (use _ for blanks)</label>
-                    <input
-                      type="text"
-                      className="w-full p-2 border rounded-md"
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Fill-in-the-blank Prompt</label>
+                    <textarea
+                      className="w-full p-2 border rounded-md focus:ring-[#ff6b8b] focus:border-[#ff6b8b]"
                       value={newQuestion.fillPrompt || ''}
                       onChange={(e) => setNewQuestion({...newQuestion, fillPrompt: e.target.value})}
-                      placeholder="H_ll_"
+                      rows={3}
+                      placeholder="Enter text with ___ for the blank"
                     />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Use ___ (three underscores) to indicate the blank.
+                    </p>
                   </div>
+                  
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Answer</label>
                     <input
                       type="text"
-                      className="w-full p-2 border rounded-md"
+                      className="w-full p-2 border rounded-md focus:ring-[#ff6b8b] focus:border-[#ff6b8b]"
                       value={newQuestion.answer || ''}
                       onChange={(e) => setNewQuestion({...newQuestion, answer: e.target.value})}
-                      placeholder="Hello"
+                      placeholder="Word that goes in the blank"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Translation</label>
+                    <input
+                      type="text"
+                      className="w-full p-2 border rounded-md focus:ring-[#ff6b8b] focus:border-[#ff6b8b]"
+                      value={newQuestion.translation || ''}
+                      onChange={(e) => setNewQuestion({...newQuestion, translation: e.target.value})}
+                      placeholder="Translation of the full sentence"
                     />
                   </div>
                 </>
               )}
 
-              {/* Common Fields */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Translation</label>
-                <input
-                  type="text"
-                  className="w-full p-2 border rounded-md"
-                  value={newQuestion.translation || ''}
-                  onChange={(e) => handleTranslationChange(e.target.value)}
-                />
-              </div>
-
-              {/* Multiple Choice Options (for text and image questions) */}
-              {(newQuestion.type === 'text' || newQuestion.type === 'image') && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Options (include the correct translation)</label>
-                  {newQuestion.options?.map((option, index) => (
-                    <div key={index} className="mb-2">
-                      <input
-                        type="text"
-                        className="w-full p-2 border rounded-md"
-                        value={option}
-                        onChange={(e) => handleOptionChange(index, e.target.value)}
-                        placeholder={`Option ${index + 1}`}
-                      />
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Difficulty and Category */}
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Difficulty
+                <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">
+                  Category
                 </label>
                 <select
+                  id="category"
+                  value={newQuestion.category || ''}
+                  onChange={(e) => setNewQuestion({...newQuestion, category: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#ff6b8b] focus:border-[#ff6b8b]"
+                  required
+                >
+                  <option value="" disabled>Select a category</option>
+                  {categories.map((category) => (
+                    <option key={category} value={category}>
+                      {category}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Difficulty</label>
+                <select
+                  className="w-full p-2 border rounded-md focus:ring-[#ff6b8b] focus:border-[#ff6b8b]"
                   value={newQuestion.difficulty || 'medium'}
                   onChange={(e) => setNewQuestion({...newQuestion, difficulty: e.target.value as 'easy' | 'medium' | 'hard'})}
-                  className="w-full p-2 border rounded"
                 >
                   <option value="easy">Easy</option>
                   <option value="medium">Medium</option>
                   <option value="hard">Hard</option>
                 </select>
               </div>
-
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Category
-                </label>
-                <div className="relative">
-                  <select
-                    value={newQuestion.category || ''}
-                    onChange={(e) => setNewQuestion({...newQuestion, category: e.target.value})}
-                    className="w-full p-2 border rounded appearance-none"
-                  >
-                    <option value="">Select a category</option>
-                    {categories.map((category) => (
-                      <option key={category.id} value={category.name}>
-                        {category.name}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                    <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                      <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
-                    </svg>
-                  </div>
-                </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  Categories can be managed in the Categories section
-                </p>
-              </div>
             </div>
 
             <div className="mt-6 flex justify-end space-x-3">
               <button
                 onClick={() => setShowAddQuestion(false)}
-                className="px-4 py-2 border rounded-md text-gray-700 hover:bg-gray-100"
+                className="px-4 py-2 border rounded-md text-gray-700 hover:bg-gray-100 focus:outline-none"
               >
                 Cancel
               </button>
               <button
                 onClick={handleAddQuestion}
-                className="px-4 py-2 bg-[#ff6b8b] hover:bg-[#ff5277] text-white rounded-md"
+                className="px-4 py-2 bg-[#ff6b8b] hover:bg-[#ff5277] text-white rounded-md focus:outline-none"
               >
                 Add Question
               </button>
@@ -624,17 +674,31 @@ export default function AdminPracticePage() {
         </div>
       )}
 
-      {/* Edit Question Modal */}
+      {/* Edit Question Modal with scrolling capability */}
       {showEditQuestion && editingQuestion && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4">Edit Practice Question</h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto">
+          <div 
+            className="fixed inset-0 bg-black opacity-50" 
+            onClick={() => setShowEditQuestion(false)}
+          ></div>
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md z-50 relative my-8 mx-auto max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-gray-800">Edit Practice Question</h2>
+              <button
+                onClick={() => setShowEditQuestion(false)}
+                className="text-gray-500 hover:text-gray-700 focus:outline-none"
+              >
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
             
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Question Type</label>
                 <select
-                  className="w-full p-2 border rounded-md"
+                  className="w-full p-2 border rounded-md focus:ring-[#ff6b8b] focus:border-[#ff6b8b]"
                   value={editingQuestion.type}
                   onChange={(e) => setEditingQuestion({...editingQuestion, type: e.target.value as 'text' | 'image' | 'fill'})}
                 >
@@ -644,158 +708,188 @@ export default function AdminPracticePage() {
                 </select>
               </div>
 
-              {/* Text Question Fields */}
               {editingQuestion.type === 'text' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Word</label>
-                  <input
-                    type="text"
-                    className="w-full p-2 border rounded-md"
-                    value={editingQuestion.word || ''}
-                    onChange={(e) => setEditingQuestion({...editingQuestion, word: e.target.value})}
-                  />
-                  <div className="mt-2">
-                    <button
-                      type="button"
-                      onClick={() => setShowFlashcardSelector(true)}
-                      className="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                    >
-                      <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
-                      </svg>
-                      Select from Flashcards
-                    </button>
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Word</label>
+                    <input
+                      type="text"
+                      className="w-full p-2 border rounded-md focus:ring-[#ff6b8b] focus:border-[#ff6b8b]"
+                      value={editingQuestion.word || ''}
+                      onChange={(e) => setEditingQuestion({...editingQuestion, word: e.target.value})}
+                    />
+                    <div className="mt-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowFlashcardSelector(true)}
+                        className="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-[#ff6b8b] hover:bg-[#ff5277] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#ff6b8b]"
+                      >
+                        <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
+                        </svg>
+                        Select from Flashcards
+                      </button>
+                    </div>
                   </div>
-                </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Translation</label>
+                    <input
+                      type="text"
+                      className="w-full p-2 border rounded-md focus:ring-[#ff6b8b] focus:border-[#ff6b8b]"
+                      value={editingQuestion.translation || ''}
+                      onChange={(e) => handleEditTranslationChange(e.target.value)}
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Options (Multiple Choice)</label>
+                    <div className="space-y-2">
+                      {editingQuestion.options?.map((option, index) => (
+                        <input
+                          key={index}
+                          type="text"
+                          className="w-full p-2 border rounded-md focus:ring-[#ff6b8b] focus:border-[#ff6b8b]"
+                          value={option}
+                          onChange={(e) => handleEditOptionChange(index, e.target.value)}
+                          placeholder={`Option ${index + 1}`}
+                        />
+                      ))}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Note: One option must match the translation exactly.
+                    </p>
+                  </div>
+                </>
               )}
 
-              {/* Image Question Fields */}
               {editingQuestion.type === 'image' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Image URL</label>
-                  <input
-                    type="text"
-                    className="w-full p-2 border rounded-md"
-                    value={editingQuestion.imageUrl || ''}
-                    onChange={(e) => setEditingQuestion({...editingQuestion, imageUrl: e.target.value})}
-                    placeholder="/images/example.jpg"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Images should be placed in the public/images folder
-                  </p>
-                </div>
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Image URL</label>
+                    <input
+                      type="text"
+                      className="w-full p-2 border rounded-md focus:ring-[#ff6b8b] focus:border-[#ff6b8b]"
+                      value={editingQuestion.imageUrl || ''}
+                      onChange={(e) => setEditingQuestion({...editingQuestion, imageUrl: e.target.value})}
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Translation</label>
+                    <input
+                      type="text"
+                      className="w-full p-2 border rounded-md focus:ring-[#ff6b8b] focus:border-[#ff6b8b]"
+                      value={editingQuestion.translation || ''}
+                      onChange={(e) => handleEditTranslationChange(e.target.value)}
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Options (Multiple Choice)</label>
+                    <div className="space-y-2">
+                      {editingQuestion.options?.map((option, index) => (
+                        <input
+                          key={index}
+                          type="text"
+                          className="w-full p-2 border rounded-md focus:ring-[#ff6b8b] focus:border-[#ff6b8b]"
+                          value={option}
+                          onChange={(e) => handleEditOptionChange(index, e.target.value)}
+                          placeholder={`Option ${index + 1}`}
+                        />
+                      ))}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Note: One option must match the translation exactly.
+                    </p>
+                  </div>
+                </>
               )}
 
-              {/* Fill in the Blank Question Fields */}
               {editingQuestion.type === 'fill' && (
                 <>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Fill Prompt (use _ for blanks)</label>
-                    <input
-                      type="text"
-                      className="w-full p-2 border rounded-md"
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Fill-in-the-blank Prompt</label>
+                    <textarea
+                      className="w-full p-2 border rounded-md focus:ring-[#ff6b8b] focus:border-[#ff6b8b]"
                       value={editingQuestion.fillPrompt || ''}
                       onChange={(e) => setEditingQuestion({...editingQuestion, fillPrompt: e.target.value})}
-                      placeholder="H_ll_"
+                      rows={3}
+                      placeholder="Enter text with ___ for the blank"
                     />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Use ___ (three underscores) to indicate the blank.
+                    </p>
                   </div>
+                  
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Answer</label>
                     <input
                       type="text"
-                      className="w-full p-2 border rounded-md"
+                      className="w-full p-2 border rounded-md focus:ring-[#ff6b8b] focus:border-[#ff6b8b]"
                       value={editingQuestion.answer || ''}
                       onChange={(e) => setEditingQuestion({...editingQuestion, answer: e.target.value})}
-                      placeholder="Hello"
+                      placeholder="Word that goes in the blank"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Translation</label>
+                    <input
+                      type="text"
+                      className="w-full p-2 border rounded-md focus:ring-[#ff6b8b] focus:border-[#ff6b8b]"
+                      value={editingQuestion.translation || ''}
+                      onChange={(e) => setEditingQuestion({...editingQuestion, translation: e.target.value})}
+                      placeholder="Translation of the full sentence"
                     />
                   </div>
                 </>
               )}
 
-              {/* Common Fields */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Translation</label>
-                <input
-                  type="text"
-                  className="w-full p-2 border rounded-md"
-                  value={editingQuestion.translation || ''}
-                  onChange={(e) => handleEditTranslationChange(e.target.value)}
-                />
-              </div>
-
-              {/* Multiple Choice Options (for text and image questions) */}
-              {(editingQuestion.type === 'text' || editingQuestion.type === 'image') && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Options (include the correct translation)</label>
-                  {editingQuestion.options?.map((option, index) => (
-                    <div key={index} className="mb-2">
-                      <input
-                        type="text"
-                        className="w-full p-2 border rounded-md"
-                        value={option}
-                        onChange={(e) => handleEditOptionChange(index, e.target.value)}
-                        placeholder={`Option ${index + 1}`}
-                      />
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Difficulty and Category */}
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Difficulty
+                <label htmlFor="edit-category" className="block text-sm font-medium text-gray-700 mb-1">
+                  Category
                 </label>
                 <select
+                  id="edit-category"
+                  value={editingQuestion.category || ''}
+                  onChange={(e) => setEditingQuestion({...editingQuestion, category: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#ff6b8b] focus:border-[#ff6b8b]"
+                  required
+                >
+                  <option value="" disabled>Select a category</option>
+                  {categories.map((category) => (
+                    <option key={category} value={category}>
+                      {category}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Difficulty</label>
+                <select
+                  className="w-full p-2 border rounded-md focus:ring-[#ff6b8b] focus:border-[#ff6b8b]"
                   value={editingQuestion.difficulty || 'medium'}
                   onChange={(e) => setEditingQuestion({...editingQuestion, difficulty: e.target.value as 'easy' | 'medium' | 'hard'})}
-                  className="w-full p-2 border rounded"
                 >
                   <option value="easy">Easy</option>
                   <option value="medium">Medium</option>
                   <option value="hard">Hard</option>
                 </select>
               </div>
-
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Category
-                </label>
-                <div className="relative">
-                  <select
-                    value={editingQuestion.category || ''}
-                    onChange={(e) => setEditingQuestion({...editingQuestion, category: e.target.value})}
-                    className="w-full p-2 border rounded appearance-none"
-                  >
-                    <option value="">Select a category</option>
-                    {categories.map((category) => (
-                      <option key={category.id} value={category.name}>
-                        {category.name}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                    <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                      <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
-                    </svg>
-                  </div>
-                </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  Categories can be managed in the Categories section
-                </p>
-              </div>
             </div>
 
             <div className="mt-6 flex justify-end space-x-3">
               <button
                 onClick={() => setShowEditQuestion(false)}
-                className="px-4 py-2 border rounded-md text-gray-700 hover:bg-gray-100"
+                className="px-4 py-2 border rounded-md text-gray-700 hover:bg-gray-100 focus:outline-none"
               >
                 Cancel
               </button>
               <button
                 onClick={handleUpdateQuestion}
-                className="px-4 py-2 bg-[#ff6b8b] hover:bg-[#ff5277] text-white rounded-md"
+                className="px-4 py-2 bg-[#ff6b8b] hover:bg-[#ff5277] text-white rounded-md focus:outline-none"
               >
                 Update Question
               </button>
@@ -872,6 +966,21 @@ export default function AdminPracticePage() {
     </div>
   );
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
