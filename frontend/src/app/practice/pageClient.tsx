@@ -652,4 +652,4 @@ export default function PracticeClient() {
             </div>
         </div>
     );
-
+};

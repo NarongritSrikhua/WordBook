@@ -13,7 +13,7 @@ import {
   PracticeQuestion,
   CreatePracticeQuestionDto
 } from '@/app/lib/api/practice';
-import { getCategories } from '@/app/lib/api/practice';
+import { getCategories } from '@/app/lib/api/categories';
 import { getFlashcards } from '@/app/lib/api/flashcards';
 
 interface NewQuestionForm extends CreatePracticeQuestionDto {}
@@ -634,9 +634,12 @@ export default function AdminPracticePage() {
                   required
                 >
                   <option value="" disabled>Select a category</option>
-                  {categories.map((category) => (
-                    <option key={category} value={category}>
-                      {category}
+                  {categories.map((category, index) => (
+                    <option 
+                      key={typeof category === 'string' ? category : (category.id || `category-${index}`)} 
+                      value={typeof category === 'string' ? category : category.name}
+                    >
+                      {typeof category === 'string' ? category : category.name}
                     </option>
                   ))}
                 </select>
@@ -858,9 +861,12 @@ export default function AdminPracticePage() {
                   required
                 >
                   <option value="" disabled>Select a category</option>
-                  {categories.map((category) => (
-                    <option key={category} value={category}>
-                      {category}
+                  {categories.map((category, index) => (
+                    <option 
+                      key={typeof category === 'string' ? category : (category.id || `category-${index}`)} 
+                      value={typeof category === 'string' ? category : category.name}
+                    >
+                      {typeof category === 'string' ? category : category.name}
                     </option>
                   ))}
                 </select>
