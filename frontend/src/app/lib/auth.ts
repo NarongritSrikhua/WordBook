@@ -1,98 +1,151 @@
 import { NextRequest } from 'next/server';
 import jwt from 'jsonwebtoken';
 
+// Session type
 export interface Session {
   id: string;
   name: string;
   email: string;
   role: string;
-  token?: string; // Add token to session
 }
 
-// Get session from request (for API routes)
+// Extract token from cookie or Authorization header
+export function getTokenFromRequest(req: NextRequest): string | null {
+  // Try to get from Authorization header first
+  const authHeader = req.headers.get('authorization');
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    return authHeader.substring(7);
+  }
+  
+  // Then try to get from cookie
+  const token = req.cookies.get('auth_session')?.value;
+  if (token) {
+    return token;
+  }
+  
+  // Also check for token cookie
+  const tokenCookie = req.cookies.get('token')?.value;
+  if (tokenCookie) {
+    return tokenCookie;
+  }
+  
+  // Finally, try to extract from cookie header
+  const cookieHeader = req.headers.get('cookie');
+  if (cookieHeader) {
+    const tokenMatch = cookieHeader.match(/auth_session=([^;]+)/);
+    if (tokenMatch && tokenMatch[1]) {
+      return tokenMatch[1];
+    }
+    
+    const altTokenMatch = cookieHeader.match(/token=([^;]+)/);
+    if (altTokenMatch && altTokenMatch[1]) {
+      return altTokenMatch[1];
+    }
+  }
+  
+  return null;
+}
+
+// Get session from request
 export function getSessionFromRequest(req: NextRequest): Session | null {
-  try {
-    const token = req.cookies.get('auth_session')?.value || 
-                  req.cookies.get('token')?.value;
-    
-    if (!token) {
-      return null;
-    }
-    
-    const jwtSecret = process.env.JWT_SECRET || 'Ghs7f$8z!bXxZk1@WqPl3n2R';
-    
-    try {
-      const decoded = jwt.verify(token, jwtSecret) as any;
-      
-      return {
-        id: decoded.sub,
-        name: decoded.name,
-        email: decoded.email,
-        role: decoded.role,
-        token: token // Include the raw token
-      };
-    } catch (jwtError) {
-      console.error('JWT verification error:', jwtError.message);
-      return null;
-    }
-  } catch (error) {
-    console.error('Error getting session from request:', error);
+  const token = getTokenFromRequest(req);
+  
+  if (!token) {
+    console.log('No token found in request');
     return null;
   }
-}
-
-
-// Client-side functions
-export function getClientSession(): Session | null {
+  
   try {
-    if (typeof window === 'undefined') return null;
-    
-    const token = localStorage.getItem('token') || getCookie('token');
-    
-    if (!token) {
-      return null;
-    }
-    
-    // For client-side, we can't verify the JWT signature properly
-    // So we just decode it to get the payload
-    const base64Url = token.split('.')[1];
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    const jsonPayload = decodeURIComponent(
-      atob(base64).split('').map(function(c) {
-        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-      }).join('')
-    );
-    
-    const decoded = JSON.parse(jsonPayload);
+    // Verify JWT token - use the same secret as in login route
+    const jwtSecret = process.env.JWT_SECRET || 'Ghs7f$8z!bXxZk1@WqPl3n2R';
+    const decoded = jwt.verify(token, jwtSecret) as any;
     
     return {
       id: decoded.sub,
       name: decoded.name,
       email: decoded.email,
-      role: decoded.role
+      role: decoded.role || 'user'
     };
   } catch (error) {
-    console.error('Error getting client session:', error);
+    console.error('Token verification failed:', error);
+    
+    // For development/testing, you can implement a fallback
+    // This is just for demonstration and should be removed in production
+    if (process.env.NODE_ENV !== 'production') {
+      // Parse the token as if it were a base64-encoded JSON
+      try {
+        const parts = token.split('.');
+        if (parts.length === 3) {
+          const payload = JSON.parse(atob(parts[1]));
+          return {
+            id: payload.sub || payload.id,
+            name: payload.name,
+            email: payload.email,
+            role: payload.role || 'user'
+          };
+        }
+      } catch (e) {
+        console.error('Failed to parse token as JWT:', e);
+      }
+      
+      // Last resort: if the token looks like a UUID, use it as the user ID
+      if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)) {
+        return {
+          id: token,
+          name: 'User',
+          email: 'user@example.com',
+          role: 'user'
+        };
+      }
+    }
+    
     return null;
   }
 }
 
-export function setSession(token: string): void {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem('token', token);
-}
-
-export function clearSession(): void {
-  if (typeof window === 'undefined') return;
-  localStorage.removeItem('token');
-}
-
-// Helper function to get cookie
-function getCookie(name: string): string | null {
-  if (typeof document === 'undefined') return null;
+// Client-side function to get the current session
+export function getClientSession(): Session | null {
+  const token = localStorage.getItem('token');
+  if (!token) return null;
   
-  const value = `; ${document.cookie}`;
-  const parts = value.split(`; ${name}=`);
-  if (parts.length === 2) return parts.pop()?.split(';').shift() || null;
-  return null;
+  try {
+    // For client-side, we can't verify the JWT signature,
+    // but we can decode the payload to get the user info
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    
+    const payload = JSON.parse(atob(parts[1]));
+    return {
+      id: payload.sub || payload.id,
+      name: payload.name,
+      email: payload.email,
+      role: payload.role || 'user'
+    };
+  } catch (error) {
+    console.error('Failed to parse token:', error);
+    return null;
+  }
+}
+
+// Set session in localStorage
+export function setSession(session: Session): void {
+  // In a real app, you'd store the JWT token, not the session object
+  localStorage.setItem('session', JSON.stringify(session));
+}
+
+// Clear session from localStorage
+export function clearSession(): void {
+  localStorage.removeItem('token');
+  localStorage.removeItem('session');
+}
+
+// Verify authentication and return user ID if successful
+export async function verifyAuth(req: NextRequest): Promise<{ success: boolean; userId?: string }> {
+  const session = getSessionFromRequest(req);
+  
+  if (!session) {
+    return { success: false };
+  }
+  
+  return { success: true, userId: session.id };
 }

@@ -68,8 +68,8 @@ export class PracticeController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiOperation({ summary: 'Update a practice question' })
   @ApiResponse({ status: 200, description: 'The practice question has been successfully updated.' })
-  async update(@Param('id') id: string, @Body() updatePracticeSetDto: UpdatePracticeSetDto) {
-    return this.practiceService.updatePracticeSet(id, updatePracticeSetDto);
+  async update(@Param('id') id: string, @Body() updatePracticeDto: UpdatePracticeDto) {
+    return this.practiceService.update(id, updatePracticeDto);
   }
 
   @Delete(':id')

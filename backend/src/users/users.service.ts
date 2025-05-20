@@ -2,8 +2,10 @@ import { Injectable, ConflictException, NotFoundException } from '@nestjs/common
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User, UserRole } from './entities/user.entity';
+import { UserPreferences } from './entities/user-preferences.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { UserPreferencesDto } from './dto/user-preferences.dto';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -11,6 +13,8 @@ export class UsersService {
   constructor(
     @InjectRepository(User)
     private usersRepository: Repository<User>,
+    @InjectRepository(UserPreferences)
+    private preferencesRepository: Repository<UserPreferences>,
   ) {}
 
   async create(createUserDto: CreateUserDto): Promise<User> {
@@ -69,4 +73,50 @@ export class UsersService {
     user.role = UserRole.ADMIN;
     return this.usersRepository.save(user);
   }
+
+  async getUserPreferences(userId: string): Promise<UserPreferences> {
+    const preferences = await this.preferencesRepository.findOne({ 
+      where: { userId } 
+    });
+    
+    if (!preferences) {
+      // Create default preferences if none exist
+      const newPreferences = this.preferencesRepository.create({
+        userId,
+        level: 'Beginner',
+        targetLanguage: 'Thai',
+        dailyGoal: '15 minutes',
+        theme: 'light',
+        notifications: true,
+        soundEffects: true
+      });
+      
+      return this.preferencesRepository.save(newPreferences);
+    }
+    
+    return preferences;
+  }
+
+  async updateUserPreferences(userId: string, preferencesDto: UserPreferencesDto): Promise<UserPreferences> {
+    // Check if user exists
+    await this.findOne(userId);
+    
+    // Find existing preferences or create new ones
+    let preferences = await this.preferencesRepository.findOne({ 
+      where: { userId } 
+    });
+    
+    if (!preferences) {
+      preferences = this.preferencesRepository.create({
+        userId,
+        ...preferencesDto
+      });
+    } else {
+      // Update existing preferences
+      this.preferencesRepository.merge(preferences, preferencesDto);
+    }
+    
+    return this.preferencesRepository.save(preferences);
+  }
 }
+
