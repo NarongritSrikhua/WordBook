@@ -1,11 +1,18 @@
-// Extract token from cookie
-export function extractTokenFromCookie(cookieHeader: string | null): string | null {
-  if (!cookieHeader) return null;
+// Extract token from cookie string
+export function extractTokenFromCookie(cookieString?: string | null): string | null {
+  if (!cookieString) return null;
   
-  const cookies = cookieHeader.split(';').map(cookie => cookie.trim());
-  const tokenCookie = cookies.find(cookie => cookie.startsWith('token='));
+  // Try to extract the token from different possible cookie names
+  const tokenCookieNames = ['token', 'auth_token', 'auth_session', 'next-auth.session-token'];
   
-  if (!tokenCookie) return null;
+  for (const cookieName of tokenCookieNames) {
+    const match = new RegExp(`${cookieName}=([^;]+)`).exec(cookieString);
+    if (match) {
+      console.log(`Found token in cookie: ${cookieName}`);
+      return match[1];
+    }
+  }
   
-  return tokenCookie.split('=')[1];
+  console.log('No token found in cookies:', cookieString);
+  return null;
 }

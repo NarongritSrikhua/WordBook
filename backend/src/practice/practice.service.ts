@@ -151,14 +151,18 @@ export class PracticeService {
     }
   }
 
-  async getUserPracticeHistory(userId: string): Promise<PracticeHistory[]> {
+  async getUserPracticeHistory(userId: string, forceRefresh: boolean = false): Promise<PracticeHistory[]> {
     try {
-      this.logger.log(`[Service] Fetching practice history for user: ${userId}`);
+      this.logger.log(`[Service] Fetching practice history for user: ${userId} (force=${forceRefresh})`);
       
       // If userId is empty, return empty array
       if (!userId) {
+        this.logger.warn('[Service] Empty userId provided, returning empty array');
         return [];
       }
+      
+      // Log the query we're about to execute
+      this.logger.log(`[Service] Executing query: SELECT * FROM practice_history WHERE userId = '${userId}' ORDER BY completedAt DESC`);
       
       // Get real data from the database
       const history = await this.practiceHistoryRepository.find({
@@ -167,6 +171,23 @@ export class PracticeService {
       });
       
       this.logger.log(`[Service] Found ${history.length} practice history entries for user ${userId}`);
+      
+      // If no results and we're not forcing a refresh, try a case-insensitive search
+      if (history.length === 0 && !forceRefresh) {
+        this.logger.log(`[Service] No results found with exact match, trying case-insensitive search`);
+        
+        // Use raw query for case-insensitive search if your DB supports it
+        // This is PostgreSQL syntax - adjust for your database
+        const rawResults = await this.practiceHistoryRepository.query(
+          `SELECT * FROM practice_history WHERE LOWER(userId) = LOWER($1) ORDER BY "completedAt" DESC`,
+          [userId]
+        );
+        
+        if (rawResults.length > 0) {
+          this.logger.log(`[Service] Found ${rawResults.length} entries with case-insensitive search`);
+          return rawResults;
+        }
+      }
       
       return history;
     } catch (error) {
@@ -198,6 +219,30 @@ export class PracticeService {
       return savedResult;
     } catch (error) {
       this.logger.error(`[Service] Error saving practice result: ${error.message}`, error.stack);
+      throw error;
+    }
+  }
+
+  async getAllHistoryUserIds(): Promise<string[]> {
+    try {
+      this.logger.log('[Service] Getting all unique user IDs from practice history');
+      
+      // Use raw query to get distinct user IDs
+      const result = await this.practiceHistoryRepository.query(
+        'SELECT DISTINCT "userId" FROM practice_history ORDER BY "userId"'
+      );
+      
+      const userIds = result.map(row => row.userId);
+      this.logger.log(`[Service] Found ${userIds.length} unique user IDs`);
+      
+      // Log the first few IDs for debugging
+      if (userIds.length > 0) {
+        this.logger.log(`[Service] Sample user IDs: ${userIds.slice(0, 5).join(', ')}${userIds.length > 5 ? '...' : ''}`);
+      }
+      
+      return userIds;
+    } catch (error) {
+      this.logger.error(`[Service] Error getting unique user IDs: ${error.message}`, error.stack);
       throw error;
     }
   }

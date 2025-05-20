@@ -235,41 +235,83 @@ export const deletePracticeSet = async (id: string): Promise<void> => {
 // Practice History API
 
 // Get practice history
-export async function getPracticeHistory(): Promise<any[]> {
+export async function getPracticeHistory(
+  userId: string,
+  forceRefresh = false, 
+  timestamp?: number
+): Promise<any[]> {
   try {
-    console.log('Fetching practice history');
-    const response = await fetchAPI('/api/practice/history');
-    console.log(`Fetched ${response.length} practice history entries`);
-    return response;
+    console.log(`Fetching practice history for user ${userId} with forceRefresh:`, forceRefresh);
+    
+    // Add a cache-busting parameter to ensure we get fresh data
+    const ts = timestamp || new Date().getTime();
+    const url = `/api/practice/history?userId=${encodeURIComponent(userId)}&_=${ts}${forceRefresh ? '&force=true' : ''}`;
+    
+    console.log(`Fetching from URL: ${url}`);
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'X-Force-Refresh': forceRefresh ? 'true' : 'false',
+        'X-User-ID': userId // Add user ID to headers as well
+      },
+      cache: 'no-store',
+      next: { revalidate: 0 } // For Next.js 13+
+    });
+    
+    if (!response.ok) {
+      console.error(`Error fetching practice history: ${response.status} ${response.statusText}`);
+      throw new Error(`Failed to fetch practice history: ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    console.log(`Fetched ${data.length} practice history entries for user ${userId}`);
+    return data;
   } catch (error) {
-    console.error('Error fetching practice history:', error);
-    return [];
+    console.error('Error in getPracticeHistory:', error);
+    throw error;
   }
 }
 
 // Submit practice result
 export async function submitPracticeResult(data: {
+  userId?: string | null;
   category?: string;
   practiceSetId?: string;
   totalQuestions: number;
   correctAnswers: number;
-  score?: number;
+  score: number;
   timeTaken?: number;
 }): Promise<any> {
   try {
-    console.log('Submitting practice result:', data);
-    
-    // Calculate score if not provided
-    if (!data.score && data.totalQuestions > 0) {
-      data.score = Math.round((data.correctAnswers / data.totalQuestions) * 100);
+    // If no userId is provided and we're in development, use a test ID
+    if (!data.userId && process.env.NODE_ENV !== 'production') {
+      console.log('No userId provided, using test ID for development');
+      data.userId = 'test-user-' + Math.floor(Math.random() * 1000);
     }
     
-    const response = await fetchAPI('/api/practice/submit-result', {
+    console.log('Submitting practice result:', data);
+    
+    const response = await fetch('/api/practice/submit-result', {
       method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify(data),
     });
-    console.log('Practice result submitted successfully:', response);
-    return response;
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Error response from API:', errorText);
+      throw new Error(`Failed to submit practice result: ${response.status} ${response.statusText}`);
+    }
+    
+    const result = await response.json();
+    console.log('Practice result submitted successfully:', result);
+    return result;
   } catch (error) {
     console.error('Error submitting practice result:', error);
     throw error;

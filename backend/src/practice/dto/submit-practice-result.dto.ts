@@ -1,7 +1,12 @@
-import { IsString, IsNumber, IsOptional, Min, Max, IsDateString } from 'class-validator';
+import { IsString, IsNumber, IsOptional, Min, Max } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class SubmitPracticeResultDto {
+  @ApiProperty({ description: 'User ID for the practice session', required: false })
+  @IsString()
+  @IsOptional()
+  userId?: string;
+
   @ApiProperty({ description: 'Category of the practice session', required: false })
   @IsString()
   @IsOptional()

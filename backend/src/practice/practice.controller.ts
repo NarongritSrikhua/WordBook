@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Query, InternalServerErrorException, Req } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query, InternalServerErrorException, Req, Headers } from '@nestjs/common';
 import { PracticeService } from './practice.service';
 import { CreatePracticeDto } from './dto/create-practice.dto';
 import { UpdatePracticeDto } from './dto/update-practice.dto';
@@ -88,15 +88,32 @@ export class PracticeController {
 
   @Get('history')
   @ApiOperation({ summary: 'Get practice history for a user' })
-  async getPracticeHistory(@Req() request) {
+  async getPracticeHistory(
+    @Req() request, 
+    @Query('userId') queryUserId?: string,
+    @Query('force') forceRefresh?: string,
+    @Headers('X-User-ID') headerUserId?: string
+  ) {
     try {
-      const userId = request.user?.id || 'demo-user';
-      this.logger.log(`[Controller] Getting practice history for user: ${userId}`);
+      // Use userId from query, header, or JWT token
+      const userId = queryUserId || headerUserId || request.user?.id || 'demo-user';
+      
+      this.logger.log(`[Controller] Getting practice history for user: ${userId} (force=${forceRefresh === 'true'})`);
+      this.logger.log(`[Controller] User ID sources: query=${queryUserId}, header=${headerUserId}, jwt=${request.user?.id}`);
+      
+      // Log the request headers for debugging
+      this.logger.log(`[Controller] Request headers: ${JSON.stringify(request.headers)}`);
       
       // Get practice history from service
-      const history = await this.practiceService.getUserPracticeHistory(userId);
+      const history = await this.practiceService.getUserPracticeHistory(userId, forceRefresh === 'true');
       
-      this.logger.log(`[Controller] Found ${history.length} practice history entries`);
+      this.logger.log(`[Controller] Found ${history.length} practice history entries for user ${userId}`);
+      
+      // If no history found, log a warning
+      if (history.length === 0) {
+        this.logger.warn(`[Controller] No history found for user ${userId}. This might indicate a user ID mismatch.`);
+      }
+      
       return history;
     } catch (error) {
       this.logger.error(`[Controller] Error getting practice history: ${error.message}`, error.stack);
@@ -108,10 +125,11 @@ export class PracticeController {
   @ApiOperation({ summary: 'Submit practice session result' })
   async submitPracticeResult(@Req() request, @Body() resultDto: SubmitPracticeResultDto) {
     try {
-      const userId = request.user?.id || 'demo-user';
+      // Use userId from request body if provided, otherwise fall back to user from JWT
+      const userId = resultDto.userId || request.user?.id || 'demo-user';
       this.logger.log(`[Controller] Submitting practice result for user: ${userId}`);
       
-      // Save practice result
+      // Save practice result with the determined userId
       const result = await this.practiceService.savePracticeResult(userId, resultDto);
       
       this.logger.log(`[Controller] Practice result saved with ID: ${result.id}`);
@@ -119,6 +137,23 @@ export class PracticeController {
     } catch (error) {
       this.logger.error(`[Controller] Error submitting practice result: ${error.message}`, error.stack);
       throw new InternalServerErrorException('Failed to submit practice result');
+    }
+  }
+
+  @Get('debug/history-users')
+  @ApiOperation({ summary: 'Debug endpoint to list all user IDs with practice history' })
+  async getHistoryUserIds() {
+    try {
+      this.logger.log('[Controller] Debug: Getting all user IDs with practice history');
+      
+      // Get all unique user IDs from the practice history table
+      const userIds = await this.practiceService.getAllHistoryUserIds();
+      
+      this.logger.log(`[Controller] Debug: Found ${userIds.length} unique user IDs with practice history`);
+      return userIds;
+    } catch (error) {
+      this.logger.error(`[Controller] Debug: Error getting user IDs: ${error.message}`, error.stack);
+      throw new InternalServerErrorException('Failed to get user IDs');
     }
   }
 }

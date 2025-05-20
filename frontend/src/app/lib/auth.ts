@@ -29,20 +29,6 @@ export function getTokenFromRequest(req: NextRequest): string | null {
     return tokenCookie;
   }
   
-  // Finally, try to extract from cookie header
-  const cookieHeader = req.headers.get('cookie');
-  if (cookieHeader) {
-    const tokenMatch = cookieHeader.match(/auth_session=([^;]+)/);
-    if (tokenMatch && tokenMatch[1]) {
-      return tokenMatch[1];
-    }
-    
-    const altTokenMatch = cookieHeader.match(/token=([^;]+)/);
-    if (altTokenMatch && altTokenMatch[1]) {
-      return altTokenMatch[1];
-    }
-  }
-  
   return null;
 }
 
@@ -70,7 +56,6 @@ export function getSessionFromRequest(req: NextRequest): Session | null {
     console.error('Token verification failed:', error);
     
     // For development/testing, you can implement a fallback
-    // This is just for demonstration and should be removed in production
     if (process.env.NODE_ENV !== 'production') {
       // Parse the token as if it were a base64-encoded JSON
       try {

@@ -14,6 +14,8 @@ import {
 } from '@/app/lib/api/practice';
 import Image from 'next/image';
 import PracticeCompletion from './components/practice-completion';
+import { getCurrentSession } from '@/app/lib/api/auth';
+import { useAuth } from '@/app/context/AuthContext';
 
 export default function PracticeClient() {
     // Rename the state variables to avoid any potential conflicts
@@ -46,6 +48,13 @@ export default function PracticeClient() {
 
     // Add this state to track if the result has been submitted
     const [resultSubmitted, setResultSubmitted] = useState(false);
+
+    // State for user ID
+    const [userId, setUserId] = useState<string | null>(null);
+    const { user } = useAuth();
+
+    // Add this state to store a custom user ID for testing
+    const [customUserId, setCustomUserId] = useState<string | null>(null);
 
     // Fetch practice sets on component mount
     useEffect(() => {
@@ -293,6 +302,152 @@ export default function PracticeClient() {
             setLoading(false);
         }
     };
+
+    // Add this useEffect to handle result submission
+    useEffect(() => {
+        if (showResults && !resultSubmitted && filteredQuestions.length > 0) {
+            const submitResult = async () => {
+                try {
+                    // Log all relevant information
+                    console.log('Preparing to submit practice result with:', {
+                        userId,
+                        userFromContext: user?.id,
+                        selectedCategory,
+                        selectedSetId,
+                        questionsCount: filteredQuestions.length,
+                        score,
+                        percentage: Math.round((score / filteredQuestions.length) * 100)
+                    });
+                    
+                    // Try to get the user ID from multiple sources
+                    const effectiveUserId = userId || user?.id || customUserId || 'explicit-test-user';
+                    console.log('Using effective user ID for submission:', effectiveUserId);
+                    
+                    // Store the user ID in localStorage for history page
+                    localStorage.setItem('lastUsedUserId', effectiveUserId);
+                    
+                    const result = await submitPracticeResult({
+                        userId: effectiveUserId, // Explicitly include the user ID
+                        category: selectedCategory,
+                        practiceSetId: selectedSetId,
+                        totalQuestions: filteredQuestions.length,
+                        correctAnswers: score,
+                        score: Math.round((score / filteredQuestions.length) * 100),
+                        timeTaken: 30 * filteredQuestions.length - timer
+                    });
+                    
+                    console.log('Practice result submitted successfully:', result);
+                    setResultSubmitted(true);
+                    
+                    // Add a slight delay before redirecting
+                    setTimeout(() => {
+                        // Redirect to the history page
+                        router.push('/practice/history');
+                    }, 2000);
+                } catch (error) {
+                    console.error('Failed to submit practice result:', error);
+                }
+            };
+            
+            submitResult();
+        }
+    }, [showResults, resultSubmitted, userId, user, customUserId, selectedCategory, selectedSetId, filteredQuestions.length, score, timer, router]);
+
+    // Add this function to get the user ID from localStorage or cookies
+    function getUserIdFromBrowser() {
+        // Try localStorage first
+        const storedUserId = localStorage.getItem('userId');
+        if (storedUserId) {
+            console.log('Found user ID in localStorage:', storedUserId);
+            return storedUserId;
+        }
+        
+        // Try to parse the token from localStorage
+        const token = localStorage.getItem('token');
+        if (token) {
+            try {
+                const parts = token.split('.');
+                if (parts.length === 3) {
+                    const payload = JSON.parse(atob(parts[1]));
+                    const id = payload.sub || payload.id;
+                    if (id) {
+                        console.log('Extracted user ID from token:', id);
+                        return id;
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to parse token:', e);
+            }
+        }
+        
+        // Try to get from cookies
+        const cookies = document.cookie.split(';');
+        for (const cookie of cookies) {
+            const [name, value] = cookie.trim().split('=');
+            if (name === 'userId') {
+                console.log('Found user ID in cookies:', value);
+                return value;
+            }
+        }
+        
+        console.log('Could not find user ID in browser storage');
+        return null;
+    }
+
+    // Add this useEffect to get the user ID when the component mounts
+    useEffect(() => {
+        const fetchUserId = async () => {
+            try {
+                // If you have an auth context, use that
+                if (user?.id) {
+                    console.log('Using user ID from auth context:', user.id);
+                    setUserId(user.id);
+                    return;
+                }
+                
+                // Try to get from browser storage
+                const browserUserId = getUserIdFromBrowser();
+                if (browserUserId) {
+                    console.log('Using user ID from browser storage:', browserUserId);
+                    setUserId(browserUserId);
+                    return;
+                }
+                
+                // Otherwise, fetch the session
+                const session = await getCurrentSession();
+                if (session?.user?.id) {
+                    console.log('Using user ID from session:', session.user.id);
+                    setUserId(session.user.id);
+                } else {
+                    console.log('No user ID found in session');
+                }
+            } catch (error) {
+                console.error('Error fetching user ID:', error);
+            }
+        };
+        
+        fetchUserId();
+    }, [user]);
+
+    // Add this console log to debug the user ID
+    useEffect(() => {
+        console.log('Current user state:', {
+            contextUser: user,
+            userId: userId,
+            isAuthenticated: !!user
+        });
+    }, [user, userId]);
+
+    // Add this useEffect to set a custom user ID for testing
+    useEffect(() => {
+        // For testing purposes, generate a consistent user ID
+        const testUserId = 'test-user-' + Math.floor(Math.random() * 1000);
+        setCustomUserId(testUserId);
+        console.log('Set custom user ID for testing:', testUserId);
+        
+        // Store it in localStorage for persistence
+        localStorage.setItem('testUserId', testUserId);
+    }, []);
 
     // Modify the loading state to show a loading spinner
     if (loading) {
