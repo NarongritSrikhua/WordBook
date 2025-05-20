@@ -136,6 +136,39 @@ export default function PracticeSetDetailPage() {
                 <p className="text-md">{practiceSet.description || 'No description'}</p>
               </div>
               
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Difficulty</p>
+                  <p className={`text-md capitalize px-2 py-1 rounded-md inline-block ${
+                    practiceSet.difficulty === 'easy' ? 'bg-green-100 text-green-800' :
+                    practiceSet.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                    practiceSet.difficulty === 'hard' ? 'bg-red-100 text-red-800' :
+                    'bg-gray-100 text-gray-800'
+                  }`}>
+                    {practiceSet.difficulty || 'Medium'}
+                  </p>
+                </div>
+                
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Category</p>
+                  <p className="text-md bg-blue-100 text-blue-800 px-2 py-1 rounded-md inline-block">
+                    {practiceSet.category || 'Uncategorized'}
+                  </p>
+                </div>
+                
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Type</p>
+                  <p className={`text-md capitalize px-2 py-1 rounded-md inline-block ${
+                    practiceSet.type === 'text' ? 'bg-indigo-100 text-indigo-800' :
+                    practiceSet.type === 'image' ? 'bg-purple-100 text-purple-800' :
+                    practiceSet.type === 'fill' ? 'bg-pink-100 text-pink-800' :
+                    'bg-gray-100 text-gray-800'
+                  }`}>
+                    {practiceSet.type || 'Mixed'}
+                  </p>
+                </div>
+              </div>
+              
               <div>
                 <p className="text-sm font-medium text-gray-500">Question Count</p>
                 <p className="text-md">{practiceSet.questionIds?.length || 0} questions</p>
@@ -159,24 +192,29 @@ export default function PracticeSetDetailPage() {
           <div className="bg-white rounded-lg shadow p-6">
             <h2 className="text-xl font-semibold mb-4">Questions in this Set</h2>
             
-            {/* Debug info */}
-            {/* <div className="mb-4 p-2 bg-gray-100 rounded text-xs">
-              <p>Debug: Has questions property: {practiceSet.questions ? 'Yes' : 'No'}</p>
-              <p>Debug: Questions length: {practiceSet.questions?.length || 0}</p>
-              <p>Debug: Has questionIds: {practiceSet.questionIds ? 'Yes' : 'No'}</p>
-              <p>Debug: QuestionIds length: {practiceSet.questionIds?.length || 0}</p>
-            </div> */}
-            
             {practiceSet.questions && practiceSet.questions.length > 0 ? (
               <div className="space-y-4">
                 {practiceSet.questions.map((question, index) => (
                   <div key={question.id} className="border rounded-lg p-4 hover:bg-gray-50">
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
-                        <div className="flex items-center mb-2">
-                          <span className="bg-gray-200 text-gray-800 text-xs font-medium px-2 py-1 rounded mr-2">
+                        <div className="flex flex-wrap items-center mb-2 gap-2">
+                          <span className="bg-gray-200 text-gray-800 text-xs font-medium px-2 py-1 rounded">
                             {question.type.toUpperCase()}
                           </span>
+                          <span className={`text-xs font-medium px-2 py-1 rounded ${
+                            question.difficulty === 'easy' ? 'bg-green-100 text-green-800' :
+                            question.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                            question.difficulty === 'hard' ? 'bg-red-100 text-red-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {question.difficulty?.toUpperCase() || 'MEDIUM'}
+                          </span>
+                          {question.category && (
+                            <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded">
+                              {question.category}
+                            </span>
+                          )}
                           <span className="text-gray-500 text-sm">#{index + 1}</span>
                         </div>
                         
@@ -259,6 +297,9 @@ export default function PracticeSetDetailPage() {
     </div>
   );
 }
+
+
+
 
 
 

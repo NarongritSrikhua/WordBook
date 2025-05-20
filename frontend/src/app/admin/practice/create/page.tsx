@@ -7,9 +7,12 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { 
   getPracticeQuestions, 
-  createPracticeSet,
-  PracticeQuestion
+  createPracticeSet, 
+  PracticeQuestion,
+  Difficulty,
+  PracticeSetType
 } from '@/app/lib/api/practice';
+import { getCategories, Category } from '@/app/lib/api/categories';
 
 export default function CreatePracticeSetPage() {
   const { isAuthenticated, user, loading } = useAuth();
@@ -18,20 +21,30 @@ export default function CreatePracticeSetPage() {
   const [selectedQuestions, setSelectedQuestions] = useState<string[]>([]);
   const [practiceSetName, setPracticeSetName] = useState('');
   const [practiceSetDescription, setPracticeSetDescription] = useState('');
+  const [practiceSetDifficulty, setPracticeSetDifficulty] = useState<Difficulty>('medium');
+  const [practiceSetCategory, setPracticeSetCategory] = useState('');
+  const [practiceSetType, setPracticeSetType] = useState<PracticeSetType>('mixed');
+  const [categories, setCategories] = useState<Category[]>([]);
   const [pageLoading, setPageLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'text' | 'image' | 'fill'>('all');
 
+  // Auth protection
   useEffect(() => {
-    if (!loading && !isAuthenticated) {
-      router.push('/login');
+    if (!loading && (!isAuthenticated || !user)) {
+      router.replace('/login');
+    } else if (!loading && isAuthenticated && user && user.role !== 'admin') {
+      router.replace('/unauthorized');
     }
-    
-    if (isAuthenticated) {
+  }, [isAuthenticated, user, loading, router]);
+
+  useEffect(() => {
+    if (isAuthenticated && user?.role === 'admin') {
       fetchQuestions();
+      fetchCategories();
     }
-  }, [isAuthenticated, loading, router]);
+  }, [isAuthenticated, user]);
 
   const fetchQuestions = async () => {
     try {
@@ -44,6 +57,16 @@ export default function CreatePracticeSetPage() {
       setError('Failed to load practice questions');
     } finally {
       setPageLoading(false);
+    }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      const data = await getCategories();
+      setCategories(data);
+    } catch (err) {
+      console.error('Error fetching categories:', err);
+      // Don't set error state here to avoid blocking the main functionality
     }
   };
 
@@ -81,7 +104,10 @@ export default function CreatePracticeSetPage() {
       await createPracticeSet({
         name: practiceSetName,
         description: practiceSetDescription,
-        questionIds: selectedQuestions
+        questionIds: selectedQuestions,
+        difficulty: practiceSetDifficulty,
+        category: practiceSetCategory,
+        type: practiceSetType
       });
       
       router.push('/admin/practice/sets');
@@ -90,6 +116,25 @@ export default function CreatePracticeSetPage() {
       setError('Failed to create practice set');
     }
   };
+
+  // Determine the practice set type based on selected questions
+  useEffect(() => {
+    if (selectedQuestions.length === 0) {
+      setPracticeSetType('mixed');
+      return;
+    }
+
+    const selectedQuestionObjects = questions.filter(q => selectedQuestions.includes(q.id));
+    const types = new Set(selectedQuestionObjects.map(q => q.type));
+
+    if (types.size === 1) {
+      // If all selected questions are of the same type
+      setPracticeSetType(selectedQuestionObjects[0].type as 'text' | 'image' | 'fill');
+    } else {
+      // If there are multiple types
+      setPracticeSetType('mixed');
+    }
+  }, [selectedQuestions, questions]);
 
   // Filter questions based on search term and type
   const filteredQuestions = questions.filter(question => {
@@ -159,6 +204,75 @@ export default function CreatePracticeSetPage() {
                   placeholder="Brief description of this practice set"
                   rows={4}
                 />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                <div className="relative">
+                  <select
+                    value={practiceSetType}
+                    onChange={(e) => setPracticeSetType(e.target.value as PracticeSetType)}
+                    className="w-full p-2 border rounded-md appearance-none"
+                  >
+                    <option value="text">Text</option>
+                    <option value="image">Image</option>
+                    <option value="fill">Fill in the Blank</option>
+                    <option value="mixed">Mixed</option>
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                    <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                      <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                    </svg>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  {practiceSetType === 'mixed' 
+                    ? 'Mixed type includes different question types' 
+                    : `All questions will be of type: ${practiceSetType}`}
+                </p>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Difficulty</label>
+                <div className="relative">
+                  <select
+                    value={practiceSetDifficulty}
+                    onChange={(e) => setPracticeSetDifficulty(e.target.value as Difficulty)}
+                    className="w-full p-2 border rounded-md appearance-none"
+                  >
+                    <option value="easy">Easy</option>
+                    <option value="medium">Medium</option>
+                    <option value="hard">Hard</option>
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                    <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                      <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                <div className="relative">
+                  <select
+                    value={practiceSetCategory}
+                    onChange={(e) => setPracticeSetCategory(e.target.value)}
+                    className="w-full p-2 border rounded-md appearance-none"
+                  >
+                    <option value="">Select a category</option>
+                    {categories.map((category) => (
+                      <option key={category.id} value={category.name}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                    <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                      <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                    </svg>
+                  </div>
+                </div>
               </div>
               
               <div>
@@ -338,3 +452,6 @@ export default function CreatePracticeSetPage() {
     </div>
   );
 }
+
+
+

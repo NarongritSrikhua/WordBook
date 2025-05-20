@@ -10,9 +10,10 @@ function extractTokenFromCookie(cookieHeader: string | null): string | null {
 // GET a practice set by ID
 export async function GET(
   request: NextRequest,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
-  const id = context.params.id;
+  const params = await context.params;
+  const id = params.id;
   const backendUrl = process.env.BACKEND_URL || 'http://localhost:3001';
   
   try {
@@ -99,8 +100,8 @@ export async function PATCH(
     const response = await fetch(`${backendUrl}/practice/sets/${id}`, {
       method: 'PATCH',
       headers,
-      credentials: 'include',
-      body: JSON.stringify(body)
+      body: JSON.stringify(body),
+      credentials: 'include'
     });
     
     if (!response.ok) {
@@ -169,5 +170,7 @@ export async function DELETE(
     );
   }
 }
+
+
 
 

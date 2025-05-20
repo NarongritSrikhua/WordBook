@@ -11,55 +11,84 @@ import {
   updatePracticeSet,
   getPracticeQuestions,
   PracticeSet,
-  PracticeQuestion
+  PracticeQuestion,
+  Difficulty,
+  PracticeSetType
 } from '@/app/lib/api/practice';
+import { getCategories, Category } from '@/app/lib/api/categories';
 
-export default function EditPracticeSetPage({ params }: { params: Promise<{ id: string }> }) {
+export default function EditPracticeSetPage({ params }: { params: { id: string } }) {
   const { isAuthenticated, user, loading } = useAuth();
   const router = useRouter();
-  const [practiceSet, setPracticeSet] = useState<PracticeSet>();
+  const [practiceSet, setPracticeSet] = useState<PracticeSet | null>(null);
   const [questions, setQuestions] = useState<PracticeQuestion[]>([]);
   const [selectedQuestions, setSelectedQuestions] = useState<string[]>([]);
   const [practiceSetName, setPracticeSetName] = useState('');
   const [practiceSetDescription, setPracticeSetDescription] = useState('');
+  const [practiceSetDifficulty, setPracticeSetDifficulty] = useState<Difficulty>('medium');
+  const [practiceSetCategory, setPracticeSetCategory] = useState('');
+  const [practiceSetType, setPracticeSetType] = useState<PracticeSetType>('mixed');
+  const [categories, setCategories] = useState<Category[]>([]);
   const [pageLoading, setPageLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'text' | 'image' | 'fill'>('all');
-  const resolvedParams = use(params);
-  const id = resolvedParams.id;
+  const id = params.id;
+
+  // Auth protection
+  useEffect(() => {
+    if (!loading && (!isAuthenticated || !user)) {
+      router.replace('/login');
+    } else if (!loading && isAuthenticated && user && user.role !== 'admin') {
+      router.replace('/unauthorized');
+    }
+  }, [isAuthenticated, user, loading, router]);
 
   useEffect(() => {
-    if (!loading && !isAuthenticated) {
-      router.push('/login');
+    if (isAuthenticated && user?.role === 'admin' && id) {
+      fetchPracticeSet();
+      fetchQuestions();
+      fetchCategories();
     }
-    
-    if (isAuthenticated && id) {
-      fetchData();
-    }
-  }, [isAuthenticated, loading, router, id]);
+  }, [isAuthenticated, user, id]);
 
-  const fetchData = async () => {
+  const fetchPracticeSet = async () => {
+    try {
+      const data = await getPracticeSet(id);
+      setPracticeSet(data);
+      setPracticeSetName(data.name);
+      setPracticeSetDescription(data.description || '');
+      setPracticeSetDifficulty(data.difficulty || 'medium');
+      setPracticeSetCategory(data.category || '');
+      setPracticeSetType(data.type || 'mixed');
+      setSelectedQuestions(data.questionIds || []);
+    } catch (err) {
+      console.error('Error fetching practice set:', err);
+      setError('Failed to load practice set');
+    }
+  };
+
+  const fetchQuestions = async () => {
     try {
       setPageLoading(true);
-      
-      // Fetch practice set
-      const setData = await getPracticeSet(id);
-      setPracticeSet(setData);
-      setPracticeSetName(setData.name);
-      setPracticeSetDescription(setData.description || '');
-      setSelectedQuestions(setData.questionIds || []);
-      
-      // Fetch all questions
-      const questionsData = await getPracticeQuestions();
-      setQuestions(questionsData);
-      
+      const data = await getPracticeQuestions();
+      setQuestions(data);
       setError(null);
     } catch (err) {
-      console.error('Error fetching data:', err);
-      setError('Failed to load data');
+      console.error('Error fetching questions:', err);
+      setError('Failed to load practice questions');
     } finally {
       setPageLoading(false);
+    }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      const data = await getCategories();
+      setCategories(data);
+    } catch (err) {
+      console.error('Error fetching categories:', err);
+      // Don't set error state here to avoid blocking the main functionality
     }
   };
 
@@ -78,7 +107,10 @@ export default function EditPracticeSetPage({ params }: { params: Promise<{ id: 
       await updatePracticeSet(id, {
         name: practiceSetName,
         description: practiceSetDescription,
-        questionIds: selectedQuestions
+        questionIds: selectedQuestions,
+        difficulty: practiceSetDifficulty,
+        category: practiceSetCategory,
+        type: practiceSetType
       });
       
       router.push(`/admin/practice/sets/${id}`);
@@ -87,6 +119,25 @@ export default function EditPracticeSetPage({ params }: { params: Promise<{ id: 
       setError('Failed to update practice set');
     }
   };
+
+  // Determine the practice set type based on selected questions
+  useEffect(() => {
+    if (selectedQuestions.length === 0) {
+      setPracticeSetType('mixed');
+      return;
+    }
+
+    const selectedQuestionObjects = questions.filter(q => selectedQuestions.includes(q.id));
+    const types = new Set(selectedQuestionObjects.map(q => q.type));
+
+    if (types.size === 1) {
+      // If all selected questions are of the same type
+      setPracticeSetType(selectedQuestionObjects[0].type as 'text' | 'image' | 'fill');
+    } else {
+      // If there are multiple types
+      setPracticeSetType('mixed');
+    }
+  }, [selectedQuestions, questions]);
 
   const toggleQuestionSelection = (questionId: string) => {
     if (selectedQuestions.includes(questionId)) {
@@ -171,6 +222,75 @@ export default function EditPracticeSetPage({ params }: { params: Promise<{ id: 
                 </div>
                 
                 <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                  <div className="relative">
+                    <select
+                      value={practiceSetType}
+                      onChange={(e) => setPracticeSetType(e.target.value as PracticeSetType)}
+                      className="w-full p-2 border rounded-md appearance-none"
+                    >
+                      <option value="text">Text</option>
+                      <option value="image">Image</option>
+                      <option value="fill">Fill in the Blank</option>
+                      <option value="mixed">Mixed</option>
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                      <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                        <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                      </svg>
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {practiceSetType === 'mixed' 
+                      ? 'Mixed type includes different question types' 
+                      : `All questions will be of type: ${practiceSetType}`}
+                  </p>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Difficulty</label>
+                  <div className="relative">
+                    <select
+                      value={practiceSetDifficulty}
+                      onChange={(e) => setPracticeSetDifficulty(e.target.value as Difficulty)}
+                      className="w-full p-2 border rounded-md appearance-none"
+                    >
+                      <option value="easy">Easy</option>
+                      <option value="medium">Medium</option>
+                      <option value="hard">Hard</option>
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                      <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                        <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                  <div className="relative">
+                    <select
+                      value={practiceSetCategory}
+                      onChange={(e) => setPracticeSetCategory(e.target.value)}
+                      className="w-full p-2 border rounded-md appearance-none"
+                    >
+                      <option value="">Select a category</option>
+                      {categories.map((category) => (
+                        <option key={category.id} value={category.name}>
+                          {category.name}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                      <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                        <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+                
+                <div>
                   <p className="text-sm font-medium text-gray-700 mb-1">Selected Questions</p>
                   <p className="text-2xl font-bold text-[#ff6b8b]">{selectedQuestions.length}</p>
                 </div>
@@ -234,15 +354,28 @@ export default function EditPracticeSetPage({ params }: { params: Promise<{ id: 
                     >
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
-                          <div className="flex items-center mb-2">
-                            <span className="bg-gray-200 text-gray-800 text-xs font-medium px-2 py-1 rounded mr-2">
+                          <div className="flex items-center mb-2 gap-2">
+                            <span className="bg-gray-200 text-gray-800 text-xs font-medium px-2 py-1 rounded">
                               {question.type.toUpperCase()}
                             </span>
+                            <span className={`text-xs font-medium px-2 py-1 rounded ${
+                            question.difficulty === 'easy' ? 'bg-green-100 text-green-800' :
+                            question.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                            question.difficulty === 'hard' ? 'bg-red-100 text-red-800' :
+                            'bg-gray-100 text-gray-800'
+                            }`}>
+                              {question.difficulty?.toUpperCase() || 'MEDIUM'}
+                            </span>
+                            {question.category && (
+                              <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded">
+                                {question.category}
+                              </span>
+                            )}
                             <input
                               type="checkbox"
                               checked={selectedQuestions.includes(question.id)}
                               onChange={() => {}}
-                              className="h-4 w-4 text-[#ff6b8b] focus:ring-[#ff6b8b] border-gray-300 rounded"
+                              className="h-4 w-4 text-[#ff6b8b] focus:ring-[#ff6b8b] border-gray-300 rounded ml-auto"
                             />
                           </div>
                           
@@ -313,4 +446,11 @@ export default function EditPracticeSetPage({ params }: { params: Promise<{ id: 
     </div>
   );
 }
+
+
+
+
+
+
+
 

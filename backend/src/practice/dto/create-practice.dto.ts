@@ -1,5 +1,5 @@
 import { IsEnum, IsNotEmpty, IsOptional, IsString, IsArray, ValidateIf } from 'class-validator';
-import { QuestionType } from '../entities/practice.entity';
+import { QuestionType, Difficulty } from '../entities/practice.entity';
 
 export class CreatePracticeDto {
   @IsEnum(QuestionType)
@@ -34,4 +34,12 @@ export class CreatePracticeDto {
   @IsString()
   @IsNotEmpty()
   answer?: string;
+
+  @IsEnum(Difficulty)
+  @IsOptional()
+  difficulty?: Difficulty;
+
+  @IsString()
+  @IsOptional()
+  category?: string;
 }

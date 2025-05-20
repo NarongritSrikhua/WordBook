@@ -1,5 +1,8 @@
 import { fetchAPI } from './fetch';
 
+export type Difficulty = 'easy' | 'medium' | 'hard';
+export type PracticeSetType = 'text' | 'image' | 'fill' | 'mixed';
+
 export interface PracticeQuestion {
   id: string;
   type: 'text' | 'image' | 'fill';
@@ -9,6 +12,8 @@ export interface PracticeQuestion {
   options?: string[];
   fillPrompt?: string;
   answer?: string;
+  difficulty?: Difficulty;
+  category?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -19,6 +24,9 @@ export interface PracticeSet {
   description: string;
   questionIds: string[];
   questions?: PracticeQuestion[];
+  difficulty?: Difficulty;
+  category?: string;
+  type?: PracticeSetType;
   createdAt: string;
   updatedAt: string;
 }
@@ -31,12 +39,17 @@ export interface CreatePracticeQuestionDto {
   options?: string[];
   fillPrompt?: string;
   answer?: string;
+  difficulty?: Difficulty;
+  category?: string;
 }
 
 export interface CreatePracticeSetDto {
   name: string;
   description: string;
   questionIds: string[];
+  difficulty?: Difficulty;
+  category?: string;
+  type?: PracticeSetType;
 }
 
 // Practice Questions API
@@ -122,6 +135,9 @@ export const deletePracticeSet = async (id: string): Promise<void> => {
     method: 'DELETE',
   });
 };
+
+
+
 
 
 

@@ -13,6 +13,7 @@ import {
   PracticeQuestion,
   CreatePracticeQuestionDto
 } from '@/app/lib/api/practice';
+import { getCategories, Category } from '@/app/lib/api/categories';
 
 interface NewQuestionForm extends CreatePracticeQuestionDto {}
 
@@ -25,6 +26,7 @@ export default function AdminPracticePage() {
   const [showAddQuestion, setShowAddQuestion] = useState(false);
   const [showEditQuestion, setShowEditQuestion] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<PracticeQuestion | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [newQuestion, setNewQuestion] = useState<NewQuestionForm>({
     type: 'text',
     word: '',
@@ -32,6 +34,8 @@ export default function AdminPracticePage() {
     options: ['', '', '', ''],
     fillPrompt: '',
     answer: '',
+    difficulty: 'medium',
+    category: '',
   });
 
   // Auth protection
@@ -48,6 +52,7 @@ export default function AdminPracticePage() {
   useEffect(() => {
     if (isAuthenticated && user?.role === 'admin') {
       fetchQuestions();
+      fetchCategories();
     }
   }, [isAuthenticated, user]);
 
@@ -62,6 +67,16 @@ export default function AdminPracticePage() {
       setError('Failed to load practice questions');
     } finally {
       setPageLoading(false);
+    }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      const data = await getCategories();
+      setCategories(data);
+    } catch (err) {
+      console.error('Error fetching categories:', err);
+      // Don't set error state here to avoid blocking the main functionality
     }
   };
 
@@ -251,8 +266,10 @@ export default function AdminPracticePage() {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Content</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Translation</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Question</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Answer</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Difficulty</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
@@ -260,46 +277,47 @@ export default function AdminPracticePage() {
                   {questions.map((question) => (
                     <tr key={question.id}>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          question.type === 'text' ? 'bg-blue-100 text-blue-800' : 
-                          question.type === 'image' ? 'bg-green-100 text-green-800' : 
-                          'bg-purple-100 text-purple-800'
-                        }`}>
-                          {question.type.charAt(0).toUpperCase() + question.type.slice(1)}
+                        <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                          {question.type.toUpperCase()}
                         </span>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-6 py-4 whitespace-nowrap">
                         {question.type === 'text' && (
-                          <div className="text-sm text-gray-900">{question.word}</div>
+                          <div className="text-sm font-medium text-gray-900">{question.word}</div>
                         )}
                         {question.type === 'image' && (
-                          <div className="flex items-center">
+                          <div className="text-sm font-medium text-gray-900">
                             {question.imageUrl ? (
-                              <div className="h-10 w-10 relative">
-                                <Image 
-                                  src={question.imageUrl} 
-                                  alt="Question image" 
-                                  width={40}
-                                  height={40}
-                                  className="object-cover rounded"
-                                />
-                              </div>
+                              <img src={question.imageUrl} alt="Question" className="h-10 w-10 object-cover rounded" />
                             ) : (
-                              <div className="text-sm text-gray-500">No image</div>
+                              'No image'
                             )}
                           </div>
                         )}
                         {question.type === 'fill' && (
-                          <div className="text-sm text-gray-900">
-                            <span className="font-medium">Prompt:</span> {question.fillPrompt}<br />
-                            <span className="font-medium">Answer:</span> {question.answer}
-                          </div>
+                          <div className="text-sm font-medium text-gray-900">{question.fillPrompt}</div>
                         )}
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm text-gray-900">{question.translation}</div>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">
+                          {question.type === 'fill' ? question.answer : question.translation}
+                        </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full 
+                          ${question.difficulty === 'easy' ? 'bg-green-100 text-green-800' : 
+                            question.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-800' : 
+                            question.difficulty === 'hard' ? 'bg-red-100 text-red-800' :
+                            'bg-gray-100 text-gray-800'}`}>
+                          {question.difficulty ? question.difficulty.charAt(0).toUpperCase() + question.difficulty.slice(1) : 'Medium'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                          {question.category || 'Uncategorized'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <button
                           onClick={() => handleEditQuestion(question)}
                           className="text-indigo-600 hover:text-indigo-900 mr-4"
@@ -426,6 +444,50 @@ export default function AdminPracticePage() {
                   ))}
                 </div>
               )}
+
+              {/* Difficulty and Category */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Difficulty
+                </label>
+                <select
+                  value={newQuestion.difficulty || 'medium'}
+                  onChange={(e) => setNewQuestion({...newQuestion, difficulty: e.target.value as 'easy' | 'medium' | 'hard'})}
+                  className="w-full p-2 border rounded"
+                >
+                  <option value="easy">Easy</option>
+                  <option value="medium">Medium</option>
+                  <option value="hard">Hard</option>
+                </select>
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Category
+                </label>
+                <div className="relative">
+                  <select
+                    value={newQuestion.category || ''}
+                    onChange={(e) => setNewQuestion({...newQuestion, category: e.target.value})}
+                    className="w-full p-2 border rounded appearance-none"
+                  >
+                    <option value="">Select a category</option>
+                    {categories.map((category) => (
+                      <option key={category.id} value={category.name}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                    <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                      <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                    </svg>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Categories can be managed in the Categories section
+                </p>
+              </div>
             </div>
 
             <div className="mt-6 flex justify-end space-x-3">
@@ -550,6 +612,50 @@ export default function AdminPracticePage() {
                   ))}
                 </div>
               )}
+
+              {/* Difficulty and Category */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Difficulty
+                </label>
+                <select
+                  value={editingQuestion.difficulty || 'medium'}
+                  onChange={(e) => setEditingQuestion({...editingQuestion, difficulty: e.target.value as 'easy' | 'medium' | 'hard'})}
+                  className="w-full p-2 border rounded"
+                >
+                  <option value="easy">Easy</option>
+                  <option value="medium">Medium</option>
+                  <option value="hard">Hard</option>
+                </select>
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Category
+                </label>
+                <div className="relative">
+                  <select
+                    value={editingQuestion.category || ''}
+                    onChange={(e) => setEditingQuestion({...editingQuestion, category: e.target.value})}
+                    className="w-full p-2 border rounded appearance-none"
+                  >
+                    <option value="">Select a category</option>
+                    {categories.map((category) => (
+                      <option key={category.id} value={category.name}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                    <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                      <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                    </svg>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Categories can be managed in the Categories section
+                </p>
+              </div>
             </div>
 
             <div className="mt-6 flex justify-end space-x-3">
@@ -572,6 +678,14 @@ export default function AdminPracticePage() {
     </div>
   );
 }
+
+
+
+
+
+
+
+
 
 
 

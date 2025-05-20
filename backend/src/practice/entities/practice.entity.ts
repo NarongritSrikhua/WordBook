@@ -6,6 +6,12 @@ export enum QuestionType {
   FILL = 'fill',
 }
 
+export enum Difficulty {
+  EASY = 'easy',
+  MEDIUM = 'medium',
+  HARD = 'hard',
+}
+
 @Entity('practice_questions')
 export class PracticeQuestion {
   @PrimaryGeneratedColumn('uuid')
@@ -35,6 +41,16 @@ export class PracticeQuestion {
 
   @Column({ nullable: true })
   answer?: string;
+
+  @Column({
+    type: 'enum',
+    enum: Difficulty,
+    default: Difficulty.MEDIUM,
+  })
+  difficulty: Difficulty;
+
+  @Column({ nullable: true })
+  category: string;
 
   @CreateDateColumn()
   createdAt: Date;

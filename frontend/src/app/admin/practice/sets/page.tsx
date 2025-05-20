@@ -113,6 +113,9 @@ export default function PracticeSetsPage() {
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Difficulty</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Questions</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
@@ -126,6 +129,29 @@ export default function PracticeSetsPage() {
                       </td>
                       <td className="px-6 py-4">
                         <div className="text-sm text-gray-500 max-w-xs truncate">{set.description}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full 
+                          ${set.difficulty === 'easy' ? 'bg-green-100 text-green-800' : 
+                            set.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-800' : 
+                            set.difficulty === 'hard' ? 'bg-red-100 text-red-800' :
+                            'bg-gray-100 text-gray-800'}`}>
+                          {set.difficulty ? set.difficulty.charAt(0).toUpperCase() + set.difficulty.slice(1) : 'Medium'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                          {set.category || 'Uncategorized'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full 
+                          ${set.type === 'text' ? 'bg-indigo-100 text-indigo-800' : 
+                            set.type === 'image' ? 'bg-purple-100 text-purple-800' : 
+                            set.type === 'fill' ? 'bg-pink-100 text-pink-800' :
+                            'bg-gray-100 text-gray-800'}`}>
+                          {set.type ? set.type.charAt(0).toUpperCase() + set.type.slice(1) : 'Mixed'}
+                        </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">{set.questionIds?.length || 0}</div>
@@ -168,3 +194,5 @@ export default function PracticeSetsPage() {
     </div>
   );
 }
+
+

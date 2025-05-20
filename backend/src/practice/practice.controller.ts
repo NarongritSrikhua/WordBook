@@ -5,6 +5,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { PracticeService } from './practice.service';
 import { CreatePracticeDto } from './dto/create-practice.dto';
 import { UpdatePracticeDto } from './dto/update-practice.dto';
+import { UpdatePracticeSetDto } from './dto/update-practice-set.dto';
 
 @ApiTags('practice')
 @Controller('practice/questions')  // Changed from 'practice' to 'practice/questions'
@@ -45,8 +46,8 @@ export class PracticeController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiOperation({ summary: 'Update a practice question' })
   @ApiResponse({ status: 200, description: 'The practice question has been successfully updated.' })
-  update(@Param('id') id: string, @Body() updatePracticeDto: UpdatePracticeDto) {
-    return this.practiceService.update(id, updatePracticeDto);
+  async update(@Param('id') id: string, @Body() updatePracticeSetDto: UpdatePracticeSetDto) {
+    return this.practiceService.updatePracticeSet(id, updatePracticeSetDto);
   }
 
   @Delete(':id')
@@ -57,3 +58,4 @@ export class PracticeController {
     return this.practiceService.remove(id);
   }
 }
+
