@@ -40,6 +40,16 @@ export class PracticeQuestion {
   fillPrompt?: string;
 
   @Column({ nullable: true })
+  fillWord?: string;
+
+  @Column({ 
+    type: 'enum', 
+    enum: ['sentence', 'word'], 
+    nullable: true 
+  })
+  fillType?: 'sentence' | 'word';
+
+  @Column({ nullable: true })
   answer?: string;
 
   @Column({
@@ -58,3 +68,5 @@ export class PracticeQuestion {
   @UpdateDateColumn()
   updatedAt: Date;
 }
+
+

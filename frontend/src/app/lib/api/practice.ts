@@ -11,6 +11,8 @@ export interface PracticeQuestion {
   translation: string;
   options?: string[];
   fillPrompt?: string;
+  fillWord?: string;
+  fillType?: 'sentence' | 'word';
   answer?: string;
   difficulty?: Difficulty;
   category?: string;
@@ -38,6 +40,8 @@ export interface CreatePracticeQuestionDto {
   translation: string;
   options?: string[];
   fillPrompt?: string;
+  fillWord?: string;
+  fillType?: 'sentence' | 'word';
   answer?: string;
   difficulty?: Difficulty;
   category?: string;

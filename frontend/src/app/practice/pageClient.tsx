@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, createRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   getRandomPracticeQuestions,
@@ -55,6 +55,60 @@ export default function PracticeClient() {
 
     // Add this state to store a custom user ID for testing
     const [customUserId, setCustomUserId] = useState<string | null>(null);
+
+    // Add these to your state variables
+    const [letterInputs, setLetterInputs] = useState<string[]>([]);
+    const [inputRefs, setInputRefs] = useState<React.RefObject<HTMLInputElement>[]>([]);
+    
+    // Add this useEffect to handle the creation of input refs for word-type questions
+    useEffect(() => {
+        // Get the current question inside the effect to avoid duplicate declarations
+        const currentQuestion = filteredQuestions[currentQuestionIndex];
+        
+        if (currentQuestion && 
+            currentQuestion.type === 'fill' && 
+            currentQuestion.fillType === 'word' && 
+            currentQuestion.fillWord) {
+            
+            const blankCount = (currentQuestion.fillWord.match(/_/g) || []).length;
+            
+            // Initialize letter inputs array with empty strings
+            setLetterInputs(Array(blankCount).fill(''));
+            
+            // Create refs for each input
+            const refs = Array(blankCount).fill(0).map(() => React.createRef<HTMLInputElement>());
+            setInputRefs(refs);
+        } else if (currentQuestion && 
+                   currentQuestion.type === 'fill' && 
+                   currentQuestion.fillType === 'word' && 
+                   !currentQuestion.fillWord) {
+            // Log warning for debugging
+            console.warn('Word-type fill question is missing fillWord property:', currentQuestion);
+        }
+    }, [filteredQuestions, currentQuestionIndex]);
+
+    // Add this function to handle input changes for word-type questions
+    const handleLetterInputChange = (index: number, value: string) => {
+        // Only allow single letters
+        if (value.length > 1) return;
+        
+        const newInputs = [...letterInputs];
+        newInputs[index] = value;
+        setLetterInputs(newInputs);
+        
+        // Auto-advance to next input if a letter was entered
+        if (value && index < inputRefs.length - 1) {
+            inputRefs[index + 1].current?.focus();
+        }
+    };
+
+    // Add this function to handle key presses for word-type questions
+    const handleLetterKeyDown = (index: number, e: React.KeyboardEvent) => {
+        // Handle backspace to go to previous input
+        if (e.key === 'Backspace' && !letterInputs[index] && index > 0) {
+            inputRefs[index - 1].current?.focus();
+        }
+    };
 
     // Fetch practice sets on component mount
     useEffect(() => {
@@ -264,19 +318,52 @@ export default function PracticeClient() {
     const handleFillSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         
-        if (userInput.trim() === '') return;
-        
-        setTimerActive(false); // Pause timer when answer is submitted
-        
+        // Get the current question from the filtered questions array
         const currentQuestion = filteredQuestions[currentQuestionIndex];
-        const isCorrect = userInput.toLowerCase().trim() === currentQuestion.answer?.toLowerCase();
-        setIsCorrectFill(isCorrect);
+        if (!currentQuestion) return;
         
-        if (isCorrect) {
-            setScore(score + 1);
-            setStreak(streak + 1);
-        } else {
-            setStreak(0); // Reset streak on wrong answer
+        if (currentQuestion.fillType === 'sentence') {
+            if (userInput.trim() === '') return;
+            
+            setTimerActive(false); // Pause timer when answer is submitted
+            
+            // Check against main answer
+            const isCorrect = userInput.toLowerCase().trim() === (currentQuestion.answer?.toLowerCase().trim() || '');
+            setIsCorrectFill(isCorrect);
+            
+            if (isCorrect) {
+                setScore(score + 1);
+                setStreak(streak + 1);
+            } else {
+                setStreak(0); // Reset streak on wrong answer
+            }
+        } else if (currentQuestion.fillType === 'word' && currentQuestion.fillWord) {
+            // For word-type questions, combine the letter inputs with the visible letters
+            setTimerActive(false);
+            
+            // Get the complete word from the user's inputs
+            let userWord = '';
+            let inputIndex = 0;
+            
+            for (const char of currentQuestion.fillWord) {
+                if (char === '_') {
+                    userWord += letterInputs[inputIndex] || '';
+                    inputIndex++;
+                } else {
+                    userWord += char;
+                }
+            }
+            
+            // Check if the user's word matches the answer
+            const isCorrect = userWord.toLowerCase() === (currentQuestion.answer?.toLowerCase() || '');
+            setIsCorrectFill(isCorrect);
+            
+            if (isCorrect) {
+                setScore(score + 1);
+                setStreak(streak + 1);
+            } else {
+                setStreak(0);
+            }
         }
     };
 
@@ -704,7 +791,11 @@ export default function PracticeClient() {
         );
     }
 
+    // Add a check to ensure we have a valid question before rendering
     const currentQuestion = filteredQuestions[currentQuestionIndex];
+    if (!currentQuestion) {
+        return <div className="text-center p-8">No questions available. Please try again later.</div>;
+    }
 
     return (
         <div className="container mx-auto px-4 py-8 mt-16">
@@ -798,36 +889,127 @@ export default function PracticeClient() {
                         )}
 
                         {currentQuestion.type === 'fill' && (
-                            <div className="text-center">
-                                <h2 className="text-xl font-medium mb-4 text-gray-800">{currentQuestion.fillPrompt}</h2>
-                                <form onSubmit={handleFillSubmit} className="mb-4">
-                                    <input
-                                        type="text"
-                                        value={userInput}
-                                        onChange={(e) => setUserInput(e.target.value)}
-                                        disabled={isCorrectFill !== null}
-                                        placeholder="Type your answer..."
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B8B] focus:border-transparent"
-                                    />
-                                    {isCorrectFill === null && (
-                                        <button
-                                            type="submit"
-                                            className="mt-4 w-full bg-[#FF6B8B] text-white py-2 rounded-lg hover:bg-opacity-90 transition-colors"
-                                        >
-                                            Submit
-                                        </button>
-                                    )}
-                                </form>
-                                {isCorrectFill !== null && (
-                                    <div className={`p-3 rounded-lg mb-4 ${isCorrectFill ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                        {isCorrectFill ? (
-                                            <p>Correct! Well done!</p>
-                                        ) : (
-                                            <p>Incorrect. The correct answer is: <strong>{currentQuestion.answer}</strong></p>
+                          <div className="text-center">
+                            {currentQuestion.fillType === 'sentence' ? (
+                              // Sentence with blank
+                              <>
+                                <h2 className="text-xl font-medium mb-4 text-gray-800">
+                                  {currentQuestion.fillPrompt ? 
+                                    currentQuestion.fillPrompt.split('___').map((part, index, array) => (
+                                      <React.Fragment key={index}>
+                                        {part}
+                                        {index < array.length - 1 && (
+                                          <span className={`inline-block min-w-20 border-b-2 mx-1 align-bottom ${
+                                            isCorrectFill !== null 
+                                              ? isCorrectFill 
+                                                ? 'border-green-500' 
+                                                : 'border-red-500' 
+                                              : 'border-gray-400'
+                                          }`}>
+                                            {isCorrectFill !== null ? (
+                                              <span className={`text-${isCorrectFill ? 'green' : 'red'}-600 font-medium`}>
+                                                {isCorrectFill ? userInput : currentQuestion.answer}
+                                              </span>
+                                            ) : (
+                                              <input
+                                                type="text"
+                                                value={userInput}
+                                                onChange={(e) => setUserInput(e.target.value)}
+                                                disabled={isCorrectFill !== null}
+                                                className="w-full bg-transparent border-none focus:outline-none text-center"
+                                                autoFocus
+                                              />
+                                            )}
+                                          </span>
                                         )}
-                                    </div>
-                                )}
-                            </div>
+                                      </React.Fragment>
+                                    ))
+                                    : <p>Error: Missing fill prompt</p>
+                                  }
+                                </h2>
+                              </>
+                            ) : currentQuestion.fillType === 'word' && currentQuestion.fillWord ? (
+                              // Word with missing letters
+                              <>
+                                <h2 className="text-xl font-medium mb-4 text-gray-800">
+                                  {currentQuestion.fillPrompt || "Fill in the missing letters"}
+                                </h2>
+                                
+                                <div className="flex justify-center space-x-2 mb-6">
+                                  {currentQuestion.fillWord.split('').map((char, charIndex) => {
+                                    // Track which blank we're on
+                                    if (char === '_') {
+                                      const blankIndex = currentQuestion.fillWord
+                                        .substring(0, charIndex)
+                                        .split('')
+                                        .filter(c => c === '_')
+                                        .length;
+                                      
+                                      return (
+                                        <div key={charIndex} className="text-center">
+                                          <div className={`w-10 h-12 border-b-2 flex items-center justify-center ${
+                                            isCorrectFill !== null 
+                                              ? isCorrectFill 
+                                                ? 'border-green-500' 
+                                                : 'border-red-500' 
+                                              : 'border-gray-400'
+                                          }`}>
+                                            {isCorrectFill !== null ? (
+                                              <span className={`text-xl font-medium text-${isCorrectFill ? 'green' : 'red'}-600`}>
+                                                {currentQuestion.answer && 
+                                                 currentQuestion.answer.charAt(charIndex)}
+                                              </span>
+                                            ) : (
+                                              <input
+                                                ref={inputRefs[blankIndex]}
+                                                type="text"
+                                                maxLength={1}
+                                                value={letterInputs[blankIndex] || ''}
+                                                onChange={(e) => handleLetterInputChange(blankIndex, e.target.value)}
+                                                onKeyDown={(e) => handleLetterKeyDown(blankIndex, e)}
+                                                disabled={isCorrectFill !== null}
+                                                className="w-full h-full bg-transparent border-none focus:outline-none text-center text-xl"
+                                                autoFocus={blankIndex === 0}
+                                              />
+                                            )}
+                                          </div>
+                                        </div>
+                                      );
+                                    } else {
+                                      return (
+                                        <div key={charIndex} className="text-center">
+                                          <div className="w-10 h-12 flex items-center justify-center">
+                                            <span className="text-xl font-medium">{char}</span>
+                                          </div>
+                                        </div>
+                                      );
+                                    }
+                                  })}
+                                </div>
+                              </>
+                            ) : (
+                              // Handle legacy fill questions or missing data
+                              <div className="p-4 bg-yellow-100 text-yellow-800 rounded-md">
+                                <p>This question is missing required data. Please try another question.</p>
+                                <button 
+                                  onClick={handleNextQuestion} 
+                                  className="mt-2 px-4 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600"
+                                >
+                                  Skip to Next Question
+                                </button>
+                              </div>
+                            )}
+                            
+                            {/* Submit button */}
+                            {isCorrectFill === null && currentQuestion.fillType && (
+                              <button
+                                onClick={handleFillSubmit}
+                                className="mt-4 px-6 py-2 bg-[#FF6B8B] text-white rounded-lg hover:bg-opacity-90 transition-colors"
+                              >
+                                Check Answer
+                              </button>
+                            )}
+                          </div>
                         )}
 
                         {/* Multiple choice options for text and image questions */}

@@ -79,16 +79,50 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(getMockQuestions(parseInt(count)));
       }
       
+      // Process the data to ensure backward compatibility
+      const processedData = data.map((question: any) => {
+        // If it's a fill question but missing fillType, determine it based on available fields
+        if (question.type === 'fill' && !question.fillType) {
+          if (question.fillWord) {
+            question.fillType = 'word';
+          } else if (question.fillPrompt && question.fillPrompt.includes('___')) {
+            question.fillType = 'sentence';
+          } else {
+            // Default to sentence type if we can't determine
+            question.fillType = 'sentence';
+          }
+        }
+        
+        return question;
+      });
+      
+      // Filter out invalid questions
+      const validQuestions = processedData.filter((question: any) => {
+        if (question.type === 'fill') {
+          if (question.fillType === 'word' && !question.fillWord) {
+            console.warn(`Filtering out invalid word-type fill question (ID: ${question.id}): Missing fillWord`);
+            return false;
+          }
+          
+          if (question.fillType === 'sentence' && (!question.fillPrompt || !question.fillPrompt.includes('___'))) {
+            console.warn(`Filtering out invalid sentence-type fill question (ID: ${question.id}): Missing or invalid fillPrompt`);
+            return false;
+          }
+        }
+        
+        return true;
+      });
+      
       // Double-check category filtering on the frontend side
-      let filteredData = data;
+      let filteredData = validQuestions;
       if (category) {
         console.log(`[API] Filtering questions by category: ${category}`);
-        filteredData = data.filter(q => q.category === category);
+        filteredData = validQuestions.filter(q => q.category === category);
         
         // If filtering resulted in too few questions, use all questions
         if (filteredData.length === 0) {
           console.log(`[API] No questions found for category '${category}', returning all questions`);
-          filteredData = data;
+          filteredData = validQuestions;
         }
       }
       

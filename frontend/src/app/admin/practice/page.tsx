@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/app/context/AuthContext';
 import Link from 'next/link';
@@ -34,6 +34,8 @@ export default function AdminPracticePage() {
     translation: '',
     options: ['', '', '', ''],
     fillPrompt: '',
+    fillWord: '',
+    fillType: 'sentence',
     answer: '',
     difficulty: 'medium',
     category: '',
@@ -93,37 +95,89 @@ export default function AdminPracticePage() {
 
   const handleAddQuestion = async () => {
     try {
-      // Validate form based on question type
-      if (newQuestion.type === 'text' && (!newQuestion.word || !newQuestion.translation)) {
-        setError('Word and translation are required for text questions');
-        return;
-      }
-      
-      if (newQuestion.type === 'image' && (!newQuestion.imageUrl || !newQuestion.translation)) {
-        setError('Image URL and translation are required for image questions');
-        return;
-      }
-      
-      if (newQuestion.type === 'fill' && (!newQuestion.fillPrompt || !newQuestion.answer || !newQuestion.translation)) {
-        setError('Fill prompt, answer, and translation are required for fill-in-the-blank questions');
-        return;
-      }
-      
-      // For text and image questions, ensure options are provided and include the correct answer
-      if ((newQuestion.type === 'text' || newQuestion.type === 'image') && 
-          (!newQuestion.options || newQuestion.options.some(opt => !opt))) {
-        setError('All four options are required for text and image questions');
-        return;
-      }
-      
-      if ((newQuestion.type === 'text' || newQuestion.type === 'image') && 
-          !newQuestion.options?.includes(newQuestion.translation)) {
-        setError('Options must include the correct translation');
-        return;
+      // Create a base question data object
+      const questionData: CreatePracticeQuestionDto = {
+        type: newQuestion.type,
+        difficulty: newQuestion.difficulty || 'medium',
+        category: newQuestion.category || 'General',
+      };
+
+      // Add type-specific fields
+      if (newQuestion.type === 'text') {
+        // For text-type questions
+        if (!newQuestion.word) {
+          setError('Word is required for text questions');
+          return;
+        }
+        if (!newQuestion.translation) {
+          setError('Translation is required');
+          return;
+        }
+        if (!newQuestion.options || newQuestion.options.length < 2) {
+          setError('At least 2 options are required');
+          return;
+        }
+
+        questionData.word = newQuestion.word;
+        questionData.translation = newQuestion.translation;
+        questionData.options = newQuestion.options;
+      } 
+      else if (newQuestion.type === 'image') {
+        // For image-type questions
+        if (!newQuestion.imageUrl) {
+          setError('Image URL is required for image questions');
+          return;
+        }
+        if (!newQuestion.translation) {
+          setError('Translation is required');
+          return;
+        }
+        if (!newQuestion.options || newQuestion.options.length < 2) {
+          setError('At least 2 options are required');
+          return;
+        }
+
+        questionData.imageUrl = newQuestion.imageUrl;
+        questionData.translation = newQuestion.translation;
+        questionData.options = newQuestion.options;
+      } 
+      else if (newQuestion.type === 'fill') {
+        // For fill-in-the-blank questions
+        questionData.fillType = newQuestion.fillType;
+        
+        if (newQuestion.fillType === 'sentence') {
+          if (!newQuestion.fillPrompt || !newQuestion.fillPrompt.includes('___')) {
+            setError('Fill prompt must include ___ (three underscores) to mark the blank');
+            return;
+          }
+          if (!newQuestion.answer) {
+            setError('Answer is required');
+            return;
+          }
+
+          questionData.fillPrompt = newQuestion.fillPrompt;
+          questionData.answer = newQuestion.answer;
+          questionData.translation = newQuestion.translation || newQuestion.answer; // Use answer as translation if not provided
+        } 
+        else if (newQuestion.fillType === 'word') {
+          if (!newQuestion.fillWord || !newQuestion.fillWord.includes('_')) {
+            setError('Word with blanks must include _ (underscore) to mark missing letters');
+            return;
+          }
+          if (!newQuestion.answer) {
+            setError('Answer is required');
+            return;
+          }
+
+          questionData.fillPrompt = newQuestion.fillPrompt || "Fill in the missing letters";
+          questionData.fillWord = newQuestion.fillWord;
+          questionData.answer = newQuestion.answer;
+          questionData.translation = newQuestion.translation || newQuestion.answer; // Use answer as translation if not provided
+        }
       }
 
-      const createdQuestion = await createPracticeQuestion(newQuestion);
-      setQuestions([createdQuestion, ...questions]);
+      // Submit the question
+      const response = await createPracticeQuestion(questionData);
       
       // Reset form
       setNewQuestion({
@@ -132,14 +186,35 @@ export default function AdminPracticePage() {
         translation: '',
         options: ['', '', '', ''],
         fillPrompt: '',
+        fillWord: '',
+        fillType: 'sentence',
         answer: '',
+        difficulty: 'medium',
+        category: categories.length > 0 ? categories[0].name : '',
       });
       
       setShowAddQuestion(false);
       setError(null);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error adding question:', err);
-      setError('Failed to add practice question');
+      
+      // Extract the most useful error message
+      let errorMessage = 'Failed to add practice question';
+      
+      if (err.data && err.data.message) {
+        // Handle array of validation errors
+        if (Array.isArray(err.data.message)) {
+          errorMessage = err.data.message.join(', ');
+        } else {
+          errorMessage = err.data.message;
+        }
+      } else if (err.message) {
+        errorMessage = err.message;
+      } else if (typeof err === 'string') {
+        errorMessage = err;
+      }
+      
+      setError(errorMessage);
     }
   };
 
@@ -585,28 +660,129 @@ export default function AdminPracticePage() {
               {newQuestion.type === 'fill' && (
                 <>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Fill-in-the-blank Prompt</label>
-                    <textarea
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Fill-in-the-blank Type</label>
+                    <select
                       className="w-full p-2 border rounded-md focus:ring-[#ff6b8b] focus:border-[#ff6b8b]"
-                      value={newQuestion.fillPrompt || ''}
-                      onChange={(e) => setNewQuestion({...newQuestion, fillPrompt: e.target.value})}
-                      rows={3}
-                      placeholder="Enter text with ___ for the blank"
-                    />
+                      value={newQuestion.fillType || 'sentence'}
+                      onChange={(e) => setNewQuestion({...newQuestion, fillType: e.target.value as 'sentence' | 'word'})}
+                    >
+                      <option value="sentence">Sentence with blank</option>
+                      <option value="word">Word with missing letters</option>
+                    </select>
                     <p className="text-xs text-gray-500 mt-1">
-                      Use ___ (three underscores) to indicate the blank.
+                      Choose whether to create a sentence with a missing word or a word with missing letters.
                     </p>
                   </div>
+
+                  {newQuestion.fillType === 'sentence' ? (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Sentence with Blank</label>
+                      <div className="mb-2">
+                        <textarea
+                          className="w-full p-2 border rounded-md focus:ring-[#ff6b8b] focus:border-[#ff6b8b]"
+                          value={newQuestion.fillPrompt || ''}
+                          onChange={(e) => setNewQuestion({...newQuestion, fillPrompt: e.target.value})}
+                          rows={3}
+                          placeholder="Enter text with ___ for the blank"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          Use ___ (three underscores) to indicate the blank. Example: "I ___ to the store."
+                        </p>
+                      </div>
+                      
+                      {/* Preview for sentence type */}
+                      {newQuestion.fillPrompt && (
+                        <div className="p-3 bg-gray-50 rounded-md mb-3">
+                          <p className="text-sm font-medium text-gray-500 mb-1">Preview:</p>
+                          <p className="text-gray-800">
+                            {newQuestion.fillPrompt.split('___').map((part, index, array) => (
+                              <React.Fragment key={index}>
+                                {part}
+                                {index < array.length - 1 && (
+                                  <span className="inline-block w-16 h-6 bg-gray-200 rounded mx-1 align-middle"></span>
+                                )}
+                              </React.Fragment>
+                            ))}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Word with Missing Letters</label>
+                      <div className="mb-2">
+                        <input
+                          type="text"
+                          className="w-full p-2 border rounded-md focus:ring-[#ff6b8b] focus:border-[#ff6b8b]"
+                          value={newQuestion.fillWord || ''}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            setNewQuestion({
+                              ...newQuestion, 
+                              fillWord: value,
+                              // Don't auto-generate the answer anymore
+                            });
+                          }}
+                          placeholder="Enter word with _ for missing letters (e.g. ap_le)"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          Use _ (single underscore) for each missing letter. Example: "ap_le" for "apple"
+                        </p>
+                      </div>
+                      
+                      {/* Add custom prompt field for word-type questions */}
+                      <div className="mb-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Custom Prompt (Optional)</label>
+                        <input
+                          type="text"
+                          className="w-full p-2 border rounded-md focus:ring-[#ff6b8b] focus:border-[#ff6b8b]"
+                          value={newQuestion.fillPrompt || ''}
+                          onChange={(e) => setNewQuestion({...newQuestion, fillPrompt: e.target.value})}
+                          placeholder="Enter custom prompt or leave empty for default"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          Default: "Fill in the missing letters"
+                        </p>
+                      </div>
+                      
+                      {/* Preview for word type */}
+                      {newQuestion.fillWord && (
+                        <div className="p-3 bg-gray-50 rounded-md mb-3">
+                          <p className="text-sm font-medium text-gray-500 mb-1">Preview:</p>
+                          <div className="flex items-center justify-center space-x-1">
+                            {newQuestion.fillWord.split('').map((char, index) => (
+                              <div key={index} className="text-center">
+                                {char === '_' ? (
+                                  <div className="w-8 h-8 border-b-2 border-gray-400 flex items-center justify-center">
+                                    <span className="invisible">X</span>
+                                  </div>
+                                ) : (
+                                  <div className="w-8 h-8 flex items-center justify-center">
+                                    <span className="text-lg">{char}</span>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                   
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Answer</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Complete Word
+                    </label>
                     <input
                       type="text"
                       className="w-full p-2 border rounded-md focus:ring-[#ff6b8b] focus:border-[#ff6b8b]"
                       value={newQuestion.answer || ''}
                       onChange={(e) => setNewQuestion({...newQuestion, answer: e.target.value})}
-                      placeholder="Word that goes in the blank"
+                      placeholder="Complete word without blanks"
                     />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Enter the complete word (e.g. "apple" for "ap_le")
+                    </p>
                   </div>
                   
                   <div>
@@ -616,7 +792,7 @@ export default function AdminPracticePage() {
                       className="w-full p-2 border rounded-md focus:ring-[#ff6b8b] focus:border-[#ff6b8b]"
                       value={newQuestion.translation || ''}
                       onChange={(e) => setNewQuestion({...newQuestion, translation: e.target.value})}
-                      placeholder="Translation of the full sentence"
+                      placeholder="Translation of the full sentence or word"
                     />
                   </div>
                 </>
@@ -812,28 +988,133 @@ export default function AdminPracticePage() {
               {editingQuestion.type === 'fill' && (
                 <>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Fill-in-the-blank Prompt</label>
-                    <textarea
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Fill-in-the-blank Type</label>
+                    <select
                       className="w-full p-2 border rounded-md focus:ring-[#ff6b8b] focus:border-[#ff6b8b]"
-                      value={editingQuestion.fillPrompt || ''}
-                      onChange={(e) => setEditingQuestion({...editingQuestion, fillPrompt: e.target.value})}
-                      rows={3}
-                      placeholder="Enter text with ___ for the blank"
-                    />
+                      value={editingQuestion.fillType || 'sentence'}
+                      onChange={(e) => setEditingQuestion({...editingQuestion, fillType: e.target.value as 'sentence' | 'word'})}
+                    >
+                      <option value="sentence">Sentence with blank</option>
+                      <option value="word">Word with missing letters</option>
+                    </select>
                     <p className="text-xs text-gray-500 mt-1">
-                      Use ___ (three underscores) to indicate the blank.
+                      Choose whether to create a sentence with a missing word or a word with missing letters.
                     </p>
                   </div>
+
+                  {editingQuestion.fillType === 'sentence' ? (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Sentence with Blank</label>
+                      <div className="mb-2">
+                        <textarea
+                          className="w-full p-2 border rounded-md focus:ring-[#ff6b8b] focus:border-[#ff6b8b]"
+                          value={editingQuestion.fillPrompt || ''}
+                          onChange={(e) => setEditingQuestion({...editingQuestion, fillPrompt: e.target.value})}
+                          rows={3}
+                          placeholder="Enter text with ___ for the blank"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          Use ___ (three underscores) to indicate the blank. Example: "I ___ to the store."
+                        </p>
+                      </div>
+                      
+                      {/* Preview for sentence type */}
+                      {editingQuestion.fillPrompt && (
+                        <div className="p-3 bg-gray-50 rounded-md mb-3">
+                          <p className="text-sm font-medium text-gray-500 mb-1">Preview:</p>
+                          <p className="text-gray-800">
+                            {editingQuestion.fillPrompt.split('___').map((part, index, array) => (
+                              <React.Fragment key={index}>
+                                {part}
+                                {index < array.length - 1 && (
+                                  <span className="inline-block w-16 h-6 bg-gray-200 rounded mx-1 align-middle"></span>
+                                )}
+                              </React.Fragment>
+                            ))}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Word with Missing Letters</label>
+                      <div className="mb-2">
+                        <input
+                          type="text"
+                          className="w-full p-2 border rounded-md focus:ring-[#ff6b8b] focus:border-[#ff6b8b]"
+                          value={editingQuestion.fillWord || ''}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            setEditingQuestion({
+                              ...editingQuestion, 
+                              fillWord: value,
+                              // Automatically update the answer to be the word without underscores
+                              answer: value.replace(/_/g, '')
+                            });
+                          }}
+                          placeholder="Enter word with _ for missing letters (e.g. ap_le)"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          Use _ (single underscore) for each missing letter. Example: "ap_le" for "apple"
+                        </p>
+                      </div>
+                      
+                      {/* Add custom prompt field for word-type questions in edit form */}
+                      <div className="mb-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Custom Prompt (Optional)</label>
+                        <input
+                          type="text"
+                          className="w-full p-2 border rounded-md focus:ring-[#ff6b8b] focus:border-[#ff6b8b]"
+                          value={editingQuestion.fillPrompt || ''}
+                          onChange={(e) => setEditingQuestion({...editingQuestion, fillPrompt: e.target.value})}
+                          placeholder="Enter custom prompt or leave empty for default"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          Default: "Fill in the missing letters"
+                        </p>
+                      </div>
+                      
+                      {/* Preview for word type */}
+                      {editingQuestion.fillWord && (
+                        <div className="p-3 bg-gray-50 rounded-md mb-3">
+                          <p className="text-sm font-medium text-gray-500 mb-1">Preview:</p>
+                          <div className="flex items-center justify-center space-x-1">
+                            {editingQuestion.fillWord.split('').map((char, index) => (
+                              <div key={index} className="text-center">
+                                {char === '_' ? (
+                                  <div className="w-8 h-8 border-b-2 border-gray-400 flex items-center justify-center">
+                                    <span className="invisible">X</span>
+                                  </div>
+                                ) : (
+                                  <div className="w-8 h-8 flex items-center justify-center">
+                                    <span className="text-lg">{char}</span>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                   
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Answer</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {editingQuestion.fillType === 'sentence' ? 'Answer (word that goes in the blank)' : 'Complete Word'}
+                    </label>
                     <input
                       type="text"
                       className="w-full p-2 border rounded-md focus:ring-[#ff6b8b] focus:border-[#ff6b8b]"
                       value={editingQuestion.answer || ''}
                       onChange={(e) => setEditingQuestion({...editingQuestion, answer: e.target.value})}
-                      placeholder="Word that goes in the blank"
+                      placeholder={editingQuestion.fillType === 'sentence' ? "Word that goes in the blank" : "Complete word without blanks"}
+                      readOnly={editingQuestion.fillType === 'word'} // Make it read-only for word type as it's auto-generated
                     />
+                    {editingQuestion.fillType === 'word' && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        This is automatically generated from your word with blanks.
+                      </p>
+                    )}
                   </div>
                   
                   <div>
@@ -843,7 +1124,7 @@ export default function AdminPracticePage() {
                       className="w-full p-2 border rounded-md focus:ring-[#ff6b8b] focus:border-[#ff6b8b]"
                       value={editingQuestion.translation || ''}
                       onChange={(e) => setEditingQuestion({...editingQuestion, translation: e.target.value})}
-                      placeholder="Translation of the full sentence"
+                      placeholder="Translation of the full sentence or word"
                     />
                   </div>
                 </>

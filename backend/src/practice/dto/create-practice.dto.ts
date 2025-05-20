@@ -30,6 +30,15 @@ export class CreatePracticeDto {
   @IsNotEmpty()
   fillPrompt?: string;
 
+  @ValidateIf(o => o.type === QuestionType.FILL && o.fillType === 'word')
+  @IsString()
+  @IsNotEmpty()
+  fillWord?: string;
+
+  @ValidateIf(o => o.type === QuestionType.FILL)
+  @IsEnum(['sentence', 'word'])
+  fillType?: 'sentence' | 'word';
+
   @ValidateIf(o => o.type === QuestionType.FILL)
   @IsString()
   @IsNotEmpty()
@@ -43,3 +52,5 @@ export class CreatePracticeDto {
   @IsOptional()
   category?: string;
 }
+
+

@@ -38,25 +38,46 @@ export async function fetchAPI(url: string, options: RequestInit = {}): Promise<
     // Handle other error responses
     if (!response.ok) {
       const contentType = response.headers.get('content-type');
-      let errorMessage = `Backend error: ${response.statusText}`;
+      let errorMessage = `Backend error: ${response.statusText || response.status}`;
+      let errorData = {};
       
-      if (contentType && contentType.includes('application/json')) {
-        const errorData = await response.json();
-        console.error('[fetchAPI] Error response data:', errorData);
-        errorMessage = errorData.message || errorMessage;
-      } else {
-        const errorText = await response.text();
-        console.error('[fetchAPI] Error response text:', errorText);
+      try {
+        if (contentType && contentType.includes('application/json')) {
+          errorData = await response.json();
+          console.error('[fetchAPI] Error response data:', errorData);
+          errorMessage = errorData.message || errorMessage;
+        } else {
+          const errorText = await response.text();
+          console.error('[fetchAPI] Error response text:', errorText || 'Empty response');
+          if (errorText) {
+            errorMessage = errorText;
+          }
+        }
+      } catch (parseError) {
+        console.error('[fetchAPI] Error parsing error response:', parseError);
       }
       
-      throw new Error(errorMessage);
+      // Create an enhanced error object with additional properties
+      const enhancedError = new Error(errorMessage);
+      Object.assign(enhancedError, {
+        status: response.status,
+        statusText: response.statusText,
+        data: errorData
+      });
+      
+      throw enhancedError;
     }
     
     // Check if response is empty
     const contentType = response.headers.get('content-type');
     if (contentType && contentType.includes('application/json')) {
-      const data = await response.json();
-      return data;
+      try {
+        const data = await response.json();
+        return data;
+      } catch (parseError) {
+        console.warn('[fetchAPI] Error parsing JSON response:', parseError);
+        return {}; // Return empty object if JSON parsing fails
+      }
     }
     
     return {};
