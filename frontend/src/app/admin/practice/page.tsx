@@ -14,6 +14,7 @@ import {
   CreatePracticeQuestionDto
 } from '@/app/lib/api/practice';
 import { getCategories, Category } from '@/app/lib/api/categories';
+import { getFlashcards } from '@/app/lib/api/flashcards';
 
 interface NewQuestionForm extends CreatePracticeQuestionDto {}
 
@@ -37,6 +38,10 @@ export default function AdminPracticePage() {
     difficulty: 'medium',
     category: '',
   });
+  const [flashcards, setFlashcards] = useState([]);
+  const [showFlashcardSelector, setShowFlashcardSelector] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filteredFlashcards, setFilteredFlashcards] = useState([]);
 
   // Auth protection
   useEffect(() => {
@@ -200,19 +205,118 @@ export default function AdminPracticePage() {
   };
 
   const handleOptionChange = (index: number, value: string) => {
-    if (!newQuestion.options) return;
+    const newOptions = [...newQuestion.options];
+    newOptions[index] = value;
+    setNewQuestion({...newQuestion, options: newOptions});
     
-    const updatedOptions = [...newQuestion.options];
-    updatedOptions[index] = value;
-    setNewQuestion({...newQuestion, options: updatedOptions});
+    // Check if translation is not in options, replace the last option with translation
+    if (newQuestion.translation && !newOptions.includes(newQuestion.translation)) {
+      // Find the first empty option or use the last one
+      const emptyIndex = newOptions.findIndex(opt => !opt);
+      const indexToReplace = emptyIndex !== -1 ? emptyIndex : 3;
+      
+      newOptions[indexToReplace] = newQuestion.translation;
+      setNewQuestion({...newQuestion, options: newOptions});
+    }
   };
 
   const handleEditOptionChange = (index: number, value: string) => {
-    if (!editingQuestion?.options) return;
+    const newOptions = [...editingQuestion.options];
+    newOptions[index] = value;
+    setEditingQuestion({...editingQuestion, options: newOptions});
     
-    const updatedOptions = [...editingQuestion.options];
-    updatedOptions[index] = value;
-    setEditingQuestion({...editingQuestion, options: updatedOptions});
+    // Check if translation is not in options, replace the last option with translation
+    if (editingQuestion.translation && !newOptions.includes(editingQuestion.translation)) {
+      // Find the first empty option or use the last one
+      const emptyIndex = newOptions.findIndex(opt => !opt);
+      const indexToReplace = emptyIndex !== -1 ? emptyIndex : 3;
+      
+      newOptions[indexToReplace] = editingQuestion.translation;
+      setEditingQuestion({...editingQuestion, options: newOptions});
+    }
+  };
+
+  const handleTranslationChange = (value) => {
+    // Update the translation
+    setNewQuestion({...newQuestion, translation: value});
+    
+    // If we have options, make sure the translation is included
+    if (newQuestion.options && newQuestion.options.length > 0) {
+      const newOptions = [...newQuestion.options];
+      
+      // If translation is not in options, replace the last option with translation
+      if (value && !newOptions.includes(value)) {
+        // Find the first empty option or use the last one
+        const emptyIndex = newOptions.findIndex(opt => !opt);
+        const indexToReplace = emptyIndex !== -1 ? emptyIndex : 3;
+        
+        newOptions[indexToReplace] = value;
+        setNewQuestion({...newQuestion, translation: value, options: newOptions});
+      }
+    }
+  };
+
+  const handleEditTranslationChange = (value) => {
+    // Update the translation
+    setEditingQuestion({...editingQuestion, translation: value});
+    
+    // If we have options, make sure the translation is included
+    if (editingQuestion.options && editingQuestion.options.length > 0) {
+      const newOptions = [...editingQuestion.options];
+      
+      // If translation is not in options, replace the last option with translation
+      if (value && !newOptions.includes(value)) {
+        // Find the first empty option or use the last one
+        const emptyIndex = newOptions.findIndex(opt => !opt);
+        const indexToReplace = emptyIndex !== -1 ? emptyIndex : 3;
+        
+        newOptions[indexToReplace] = value;
+        setEditingQuestion({...editingQuestion, translation: value, options: newOptions});
+      }
+    }
+  };
+
+  useEffect(() => {
+    const fetchFlashcards = async () => {
+      try {
+        const data = await getFlashcards();
+        setFlashcards(data);
+        setFilteredFlashcards(data);
+      } catch (err) {
+        console.error('Error fetching flashcards:', err);
+      }
+    };
+    
+    fetchFlashcards();
+  }, []);
+
+  useEffect(() => {
+    if (searchTerm.trim() === '') {
+      setFilteredFlashcards(flashcards);
+    } else {
+      const filtered = flashcards.filter(card => 
+        card.front.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        card.back.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+      setFilteredFlashcards(filtered);
+    }
+  }, [searchTerm, flashcards]);
+
+  const selectFlashcard = (flashcard) => {
+    if (showEditQuestion) {
+      setEditingQuestion({
+        ...editingQuestion,
+        word: flashcard.front,
+        translation: flashcard.back
+      });
+    } else {
+      setNewQuestion({
+        ...newQuestion,
+        word: flashcard.front,
+        translation: flashcard.back
+      });
+    }
+    setShowFlashcardSelector(false);
   };
 
   if (loading || !isAuthenticated) {
@@ -370,6 +474,18 @@ export default function AdminPracticePage() {
                     value={newQuestion.word || ''}
                     onChange={(e) => setNewQuestion({...newQuestion, word: e.target.value})}
                   />
+                  <div className="mt-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowFlashcardSelector(true)}
+                      className="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    >
+                      <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
+                      </svg>
+                      Select from Flashcards
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -422,8 +538,8 @@ export default function AdminPracticePage() {
                 <input
                   type="text"
                   className="w-full p-2 border rounded-md"
-                  value={newQuestion.translation}
-                  onChange={(e) => setNewQuestion({...newQuestion, translation: e.target.value})}
+                  value={newQuestion.translation || ''}
+                  onChange={(e) => handleTranslationChange(e.target.value)}
                 />
               </div>
 
@@ -538,6 +654,18 @@ export default function AdminPracticePage() {
                     value={editingQuestion.word || ''}
                     onChange={(e) => setEditingQuestion({...editingQuestion, word: e.target.value})}
                   />
+                  <div className="mt-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowFlashcardSelector(true)}
+                      className="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    >
+                      <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
+                      </svg>
+                      Select from Flashcards
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -590,8 +718,8 @@ export default function AdminPracticePage() {
                 <input
                   type="text"
                   className="w-full p-2 border rounded-md"
-                  value={editingQuestion.translation}
-                  onChange={(e) => setEditingQuestion({...editingQuestion, translation: e.target.value})}
+                  value={editingQuestion.translation || ''}
+                  onChange={(e) => handleEditTranslationChange(e.target.value)}
                 />
               </div>
 
@@ -675,9 +803,77 @@ export default function AdminPracticePage() {
           </div>
         </div>
       )}
+
+      {/* Flashcard Selector Modal */}
+      {showFlashcardSelector && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-medium text-gray-900">Select a Flashcard</h3>
+              <button
+                type="button"
+                onClick={() => setShowFlashcardSelector(false)}
+                className="text-gray-400 hover:text-gray-500"
+              >
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="mb-4">
+              <input
+                type="text"
+                placeholder="Search flashcards..."
+                className="w-full p-2 border rounded-md"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            
+            <div className="overflow-y-auto flex-grow">
+              {filteredFlashcards.length > 0 ? (
+                <div className="grid grid-cols-1 gap-4">
+                  {filteredFlashcards.map((flashcard) => (
+                    <div
+                      key={flashcard.id}
+                      className="border rounded-lg p-3 cursor-pointer hover:bg-gray-50"
+                      onClick={() => selectFlashcard(flashcard)}
+                    >
+                      <div className="font-medium">{flashcard.front}</div>
+                      <div className="text-gray-500">{flashcard.back}</div>
+                      {flashcard.category && (
+                        <div className="text-xs text-gray-400 mt-1">
+                          Category: {flashcard.category}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-4 text-gray-500">
+                  {searchTerm ? 'No flashcards match your search' : 'No flashcards available'}
+                </div>
+              )}
+            </div>
+            
+            <div className="mt-4 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowFlashcardSelector(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
+
 
 
 
