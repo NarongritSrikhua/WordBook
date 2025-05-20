@@ -209,7 +209,7 @@ export default function AdminFlashcardsPage() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                  {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th> */}
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Front</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Back</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
@@ -220,7 +220,7 @@ export default function AdminFlashcardsPage() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredCards.map(card => (
                   <tr key={card.id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{card.id}</td>
+                    {/* <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{card.id}</td> */}
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{card.front}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{card.back}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{card.category}</td>

@@ -358,7 +358,7 @@ const FlashcardsClient = () => {
                         </div>
                         
                         {/* Difficulty Rating - only show for authenticated users */}
-                        {isAuthenticated && (
+                        {/* {(
                             <div className="flex justify-center gap-4">
                                 <button 
                                     onClick={() => handleDifficultyRating('easy')}
@@ -379,7 +379,7 @@ const FlashcardsClient = () => {
                                     Hard
                                 </button>
                             </div>
-                        )}
+                        )} */}
                     </div>
                 </div>
             ) : (

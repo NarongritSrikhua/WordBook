@@ -78,7 +78,6 @@ export class FlashcardsController {
     return this.flashcardsService.remove(id, req.user.userId);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Post(':id/review')
   review(@Param('id') id: string, @Body() reviewFlashcardDto: ReviewFlashcardDto, @Request() req) {
     return this.flashcardsService.review(id, reviewFlashcardDto, req.user.userId);
