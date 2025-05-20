@@ -41,13 +41,19 @@ export async function GET(request: NextRequest) {
     const response = await fetch(`${backendUrl}/flashcards`, {
       method: 'GET',
       headers,
-      credentials: 'include', //  ! ให้ cookie  ส่งไป backend
+      credentials: 'include',
     });
 
     const contentType = response.headers.get('content-type');
     const isJSON = contentType?.includes('application/json');
 
     if (!response.ok) {
+      // If unauthorized but we want to show public flashcards anyway
+      if (response.status === 401) {
+        console.log('[GET] Unauthorized but returning empty array for public access');
+        return NextResponse.json([]);
+      }
+      
       const errorBody = isJSON ? await response.json() : await response.text();
       console.error('[GET] Backend error:', response.status, errorBody);
       return NextResponse.json(

@@ -36,13 +36,6 @@ const FlashcardsClient = () => {
     
     // Check authentication and fetch flashcards
     useEffect(() => {
-        // First check if user is authenticated
-        if (!isAuthenticated) {
-            console.log('User not authenticated, redirecting to login');
-            router.push('/login?callbackUrl=/flashcards');
-            return;
-        }
-        
         const fetchCards = async () => {
             try {
                 setLoading(true);
@@ -57,11 +50,10 @@ const FlashcardsClient = () => {
             }
         };
         
-        if (isAuthenticated) {
-            fetchCards();
-        }
-    }, [isAuthenticated, router]);
-    
+        // Fetch cards regardless of authentication status
+        fetchCards();
+    }, []);
+
     // CSS animations and styles
     useEffect(() => {
         const style = document.createElement('style');
@@ -137,19 +129,14 @@ const FlashcardsClient = () => {
     
     // Check authentication status on page load
     useEffect(() => {
-        // Check authentication status on page load
+        // Just log authentication status for debugging
         const token = document.cookie.includes('auth_session') || document.cookie.includes('token');
         const localStorageToken = localStorage.getItem('token');
         
         console.log('Cookies available:', document.cookie);
         console.log('LocalStorage token available:', !!localStorageToken);
-        
-        // If no authentication, redirect to login
-        if (!token && !localStorageToken) {
-            console.log('No authentication found, redirecting to login');
-            router.push('/login?callbackUrl=/flashcards');
-        }
-    }, [router]);
+        console.log('User authenticated:', isAuthenticated);
+    }, [isAuthenticated]);
     
     // Show loading state
     if (loading) {
@@ -305,15 +292,18 @@ const FlashcardsClient = () => {
                         </button>
                     </div>
                     
-                    <button 
-                        onClick={() => setShowAddCard(true)}
-                        className="bg-[#FF6B8B] text-white px-4 py-2 rounded-lg hover:bg-[#ff5c7f] transition-colors flex items-center"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
-                        </svg>
-                        Add Card
-                    </button>
+                    {/* Only show Add Card button for authenticated users */}
+                    {isAuthenticated && (
+                        <button 
+                            onClick={() => setShowAddCard(true)}
+                            className="bg-[#FF6B8B] text-white px-4 py-2 rounded-lg hover:bg-[#ff5c7f] transition-colors flex items-center"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
+                            </svg>
+                            Add Card
+                        </button>
+                    )}
                 </div>
             </div>
             
@@ -367,27 +357,29 @@ const FlashcardsClient = () => {
                             </button>
                         </div>
                         
-                        {/* Difficulty Rating */}
-                        <div className="flex justify-center gap-4">
-                            <button 
-                                onClick={() => handleDifficultyRating('easy')}
-                                className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors"
-                            >
-                                Easy
-                            </button>
-                            <button 
-                                onClick={() => handleDifficultyRating('medium')}
-                                className="bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 transition-colors"
-                            >
-                                Medium
-                            </button>
-                            <button 
-                                onClick={() => handleDifficultyRating('hard')}
-                                className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors"
-                            >
-                                Hard
-                            </button>
-                        </div>
+                        {/* Difficulty Rating - only show for authenticated users */}
+                        {isAuthenticated && (
+                            <div className="flex justify-center gap-4">
+                                <button 
+                                    onClick={() => handleDifficultyRating('easy')}
+                                    className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors"
+                                >
+                                    Easy
+                                </button>
+                                <button 
+                                    onClick={() => handleDifficultyRating('medium')}
+                                    className="bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 transition-colors"
+                                >
+                                    Medium
+                                </button>
+                                <button 
+                                    onClick={() => handleDifficultyRating('hard')}
+                                    className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors"
+                                >
+                                    Hard
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
             ) : (
@@ -395,15 +387,20 @@ const FlashcardsClient = () => {
                     <h2 className="text-2xl font-bold text-gray-700 mb-2">No flashcards found</h2>
                     <p className="text-gray-600 mb-6">
                         {cards.length === 0 
-                            ? "You haven't created any flashcards yet." 
+                            ? isAuthenticated 
+                                ? "You haven't created any flashcards yet." 
+                                : "There are no flashcards available for this selection."
                             : "No cards match your current filters."}
                     </p>
-                    <button 
-                        onClick={() => setShowAddCard(true)}
-                        className="bg-[#FF6B8B] text-white px-4 py-2 rounded-lg hover:bg-[#ff5c7f] transition-colors"
-                    >
-                        Create Your First Card
-                    </button>
+                    {/* Only show create button for authenticated users */}
+                    {isAuthenticated && (
+                        <button 
+                            onClick={() => setShowAddCard(true)}
+                            className="bg-[#FF6B8B] text-white px-4 py-2 rounded-lg hover:bg-[#ff5c7f] transition-colors"
+                        >
+                            Create Your First Card
+                        </button>
+                    )}
                 </div>
             )}
             

@@ -44,8 +44,9 @@ export async function GET(request: NextRequest) {
 
     console.log(`[Categories API] Backend response status: ${response.status}`);
 
+    // Return empty array for unauthorized requests to allow public access
     if (response.status === 401) {
-      console.log('[Categories API] Authentication failed (401), returning empty array');
+      console.log('[Categories API] Authentication failed (401), returning empty array for public access');
       return NextResponse.json([]);
     }
 
@@ -121,3 +122,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+

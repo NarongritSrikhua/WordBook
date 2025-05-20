@@ -25,6 +25,7 @@ export class FlashcardsController {
   }
 
   // Categories endpoints - must be placed BEFORE the :id routes to avoid conflict
+  // Public endpoint for categories
   @Get('categories')
   findAllCategories() {
     return this.flashcardsService.findAllCategories();
