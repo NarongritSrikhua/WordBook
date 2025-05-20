@@ -60,3 +60,5 @@ export const deletePracticeQuestion = async (id: string): Promise<void> => {
     method: 'DELETE'
   });
 };
+
+
