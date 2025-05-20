@@ -122,17 +122,6 @@ export default function Navbar() {
                     aria-labelledby="user-menu-button"
                     tabIndex={-1}
                   >
-                    <Link
-                      href="/dashboard"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      role="menuitem"
-                      tabIndex={-1}
-                      id="user-menu-item-0"
-                      onClick={() => setIsProfileOpen(false)}
-                    >
-                      Dashboard
-                    </Link>
-                    
                     {/* Admin Dashboard Link - Only visible for admin users */}
                     {isAdmin && (
                       <Link
@@ -146,7 +135,6 @@ export default function Navbar() {
                         Admin Dashboard
                       </Link>
                     )}
-                    
                     <Link
                       href="/profile"
                       className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
@@ -156,6 +144,16 @@ export default function Navbar() {
                       onClick={() => setIsProfileOpen(false)}
                     >
                       Profile
+                    </Link>
+                    <Link
+                      href="/practice/history"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      role="menuitem"
+                      tabIndex={-1}
+                      id="user-menu-item-0"
+                      onClick={() => setIsProfileOpen(false)}
+                    >
+                      History
                     </Link>
                     <button
                       className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
