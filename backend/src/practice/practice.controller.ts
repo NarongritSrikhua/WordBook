@@ -1,14 +1,13 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query, ParseIntPipe, UseGuards } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
 import { PracticeService } from './practice.service';
 import { CreatePracticeDto } from './dto/create-practice.dto';
 import { UpdatePracticeDto } from './dto/update-practice.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 
 @ApiTags('practice')
-@Controller('practice')
+@Controller('practice/questions')  // Changed from 'practice' to 'practice/questions'
 export class PracticeController {
   constructor(private readonly practiceService: PracticeService) {}
 
@@ -46,7 +45,6 @@ export class PracticeController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiOperation({ summary: 'Update a practice question' })
   @ApiResponse({ status: 200, description: 'The practice question has been successfully updated.' })
-  @ApiResponse({ status: 404, description: 'Practice question not found.' })
   update(@Param('id') id: string, @Body() updatePracticeDto: UpdatePracticeDto) {
     return this.practiceService.update(id, updatePracticeDto);
   }
@@ -55,7 +53,6 @@ export class PracticeController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiOperation({ summary: 'Delete a practice question' })
   @ApiResponse({ status: 200, description: 'The practice question has been successfully deleted.' })
-  @ApiResponse({ status: 404, description: 'Practice question not found.' })
   remove(@Param('id') id: string) {
     return this.practiceService.remove(id);
   }

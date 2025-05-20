@@ -1,9 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter, usePathname } from 'next/navigation';
 import { useState } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { useRouter, usePathname } from 'next/navigation';
+import { useAuth } from '@/app/context/AuthContext';
 
 interface AdminSidebarProps {
   userName: string;
@@ -13,6 +13,7 @@ export default function AdminSidebar({ userName }: AdminSidebarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [practiceSubmenuOpen, setPracticeSubmenuOpen] = useState(false);
   const { logout } = useAuth(); // Use the logout function from AuthContext
 
   const handleLogout = async () => {
@@ -32,6 +33,11 @@ export default function AdminSidebar({ userName }: AdminSidebarProps) {
     return pathname === path || pathname.startsWith(`${path}/`);
   };
 
+  // Helper function to determine if a submenu should be open
+  const isPracticeActive = () => {
+    return pathname.startsWith('/admin/practice');
+  };
+
   return (
     <aside className={`${isCollapsed ? 'w-20' : 'w-64'} bg-white shadow-md h-screen fixed transition-all duration-300 ease-in-out z-10`}>
       {/* Collapse toggle button */}
@@ -45,7 +51,7 @@ export default function AdminSidebar({ userName }: AdminSidebarProps) {
       </button>
 
       {/* Header */}
-      <div className="p-4 border-b flex items-center justify-between">
+      <div className="p-4 flex items-center justify-between">
         <Link href="/admin/dashboard" className="flex-shrink-0 flex items-center">
           <span className={`text-2xl font-bold text-[#ff6b8b] ${isCollapsed ? 'hidden' : 'block'}`}>Word Book</span>
           {isCollapsed ? (
@@ -57,7 +63,7 @@ export default function AdminSidebar({ userName }: AdminSidebarProps) {
       </div>
       
       {/* User profile */}
-      <div className="p-4 border-b">
+      <div className="p-4">
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 bg-gradient-to-r from-[#ff6b8b] to-[#ff8e8b] rounded-full flex items-center justify-center text-white shadow-sm">
             {userName ? userName[0].toUpperCase() : 'A'}
@@ -120,21 +126,90 @@ export default function AdminSidebar({ userName }: AdminSidebarProps) {
           {!isCollapsed && <span>Flashcards</span>}
         </Link>
 
-        <Link 
-          href="/admin/practice" 
-          className={`mt-1 group flex items-center px-2 py-3 text-base font-medium rounded-md hover:bg-gray-50 transition-colors ${
-            isActive('/admin/practice') 
-              ? 'bg-pink-50 text-[#ff6b8b]' 
-              : 'text-gray-700 hover:text-[#ff6b8b]'
-          }`}
-        >
-          <svg className={`${isCollapsed ? 'mx-auto' : 'mr-3'} h-6 w-6 ${
-            isActive('/admin/practice') ? 'text-[#ff6b8b]' : 'text-gray-500 group-hover:text-[#ff6b8b]'
-          }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-          </svg>
-          {!isCollapsed && <span>Practice</span>}
-        </Link>
+        {/* Practice section with submenu */}
+        <div className="mt-1">
+          <button
+            onClick={() => !isCollapsed && setPracticeSubmenuOpen(!practiceSubmenuOpen)}
+            className={`w-full group flex items-center px-2 py-3 text-base font-medium rounded-md hover:bg-gray-50 transition-colors ${
+              isPracticeActive() 
+                ? 'bg-pink-50 text-[#ff6b8b]' 
+                : 'text-gray-700 hover:text-[#ff6b8b]'
+            }`}
+          >
+            <svg className={`${isCollapsed ? 'mx-auto' : 'mr-3'} h-6 w-6 ${
+              isPracticeActive() ? 'text-[#ff6b8b]' : 'text-gray-500 group-hover:text-[#ff6b8b]'
+            }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+            </svg>
+            {!isCollapsed && (
+              <div className="flex justify-between items-center w-full">
+                <span>Practice</span>
+                <svg 
+                  className={`h-4 w-4 transition-transform ${practiceSubmenuOpen ? 'transform rotate-180' : ''}`} 
+                  fill="none" 
+                  viewBox="0 0 24 24" 
+                  stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            )}
+          </button>
+
+          {/* Submenu for Practice */}
+          {!isCollapsed && practiceSubmenuOpen && (
+            <div className="ml-8 mt-1 space-y-1">
+              <Link 
+                href="/admin/practice" 
+                className={`block px-3 py-2 text-sm font-medium rounded-md ${
+                  isActive('/admin/practice') && !isActive('/admin/practice/sets') && !isActive('/admin/practice/create')
+                    ? 'bg-pink-50 text-[#ff6b8b]' 
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-[#ff6b8b]'
+                }`}
+              >
+                Questions
+              </Link>
+              <Link 
+                href="/admin/practice/sets" 
+                className={`block px-3 py-2 text-sm font-medium rounded-md ${
+                  isActive('/admin/practice/sets') 
+                    ? 'bg-pink-50 text-[#ff6b8b]' 
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-[#ff6b8b]'
+                }`}
+              >
+                Practice Sets
+              </Link>
+              {/* <Link 
+                href="/admin/practice/create" 
+                className={`block px-3 py-2 text-sm font-medium rounded-md ${
+                  isActive('/admin/practice/create') 
+                    ? 'bg-pink-50 text-[#ff6b8b]' 
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-[#ff6b8b]'
+                }`}
+              >
+                Create Set
+              </Link> */}
+            </div>
+          )}
+
+          {/* For collapsed mode, just show the icon */}
+          {isCollapsed && (
+            <Link 
+              href="/admin/practice" 
+              className={`mt-1 group flex items-center justify-center px-2 py-3 text-base font-medium rounded-md hover:bg-gray-50 transition-colors ${
+                isPracticeActive() 
+                  ? 'bg-pink-50 text-[#ff6b8b]' 
+                  : 'text-gray-700 hover:text-[#ff6b8b]'
+              }`}
+            >
+              <svg className={`h-6 w-6 ${
+                isPracticeActive() ? 'text-[#ff6b8b]' : 'text-gray-500 group-hover:text-[#ff6b8b]'
+              }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+              </svg>
+            </Link>
+          )}
+        </div>
 
         <Link 
           href="/admin/categories" 
