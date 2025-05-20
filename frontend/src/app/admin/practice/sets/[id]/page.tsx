@@ -1,25 +1,21 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
+import { use } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
-import { getPracticeSet, getPracticeQuestions, deletePracticeSet } from '@/app/lib/api/practice';
-import { PracticeSet, PracticeQuestion } from '@/app/lib/definitions';
+import { 
+  getPracticeSet, 
+  deletePracticeSet,
+  getPracticeQuestions, // Add this import
+  PracticeSet,
+  PracticeQuestion
+} from '@/app/lib/api/practice';
+import LoadingSpinner from '@/app/components/LoadingSpinner';
 
-// Simple inline loading component
-function LoadingSpinner() {
-  return (
-    <div className="flex justify-center items-center h-64">
-      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-      <span className="sr-only">Loading...</span>
-    </div>
-  );
-}
-
-export default function PracticeSetDetailPage() {
-  const params = useParams();
-  const id = params.id as string;
+export default function PracticeSetDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const unwrappedParams = use(params);
+  const id = unwrappedParams.id;
   const router = useRouter();
   
   const [practiceSet, setPracticeSet] = useState<PracticeSet | null>(null);

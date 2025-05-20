@@ -39,46 +39,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const checkAuth = async () => {
       try {
         setLoading(true);
+        const response = await fetch('/api/auth/check');
+        const data = await response.json();
         
-        // Try to get session from client-side storage
-        const clientSession = getClientSession();
-        console.log('Client session from storage:', clientSession);
+        console.log('[AuthContext] Auth check response:', data);
         
-        if (clientSession) {
-          console.log('Setting user from client session, role:', clientSession.role);
-          setUser({
-            id: clientSession.id,
-            name: clientSession.name,
-            email: clientSession.email,
-            role: clientSession.role
-          });
+        if (data.authenticated) {
           setIsAuthenticated(true);
-          return;
-        }
-        
-        // If no session in client storage, try to fetch from API
-        const response = await fetch('/api/auth/me', {
-          credentials: 'include'
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          if (data.authenticated && data.user) {
-            setUser(data.user);
-            
-            // Also store in client storage for future use
-            if (data.token) {
-              setSession(data.token);
-            }
-          }
+          setUser(data.user);
+        } else {
+          setIsAuthenticated(false);
+          setUser(null);
         }
       } catch (error) {
-        console.error('Auth check error:', error);
+        console.error('[AuthContext] Error checking authentication:', error);
+        setIsAuthenticated(false);
+        setUser(null);
       } finally {
         setLoading(false);
       }
     };
-    
+
     checkAuth();
   }, []);
 

@@ -1,12 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Helper function to extract token from cookie
-function extractTokenFromCookie(cookieHeader: string | null): string | null {
-  if (!cookieHeader) return null;
-  const tokenMatch = cookieHeader.match(/token=([^;]+)/);
-  return tokenMatch ? tokenMatch[1] : null;
-}
-
 // GET a practice set by ID
 export async function GET(
   request: NextRequest,
@@ -26,17 +19,14 @@ export async function GET(
     // Forward the authorization header or extract from cookie
     const authHeader = request.headers.get('authorization');
     const cookieHeader = request.headers.get('cookie');
-    const token = extractTokenFromCookie(cookieHeader);
     
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
     
-    // Add Authorization header if we have a token (either from header or cookie)
+    // Add Authorization header if we have it
     if (authHeader) {
       headers['Authorization'] = authHeader;
-    } else if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
     }
     
     const backendEndpoint = `${backendUrl}/practice/sets/${id}${withQuestions ? '?withQuestions=true' : ''}`;
@@ -57,7 +47,13 @@ export async function GET(
     
     const data = await response.json();
     console.log('[Frontend API] Backend response structure:', Object.keys(data));
-    console.log('[Frontend API] Has questions:', data.questions ? `Yes (${data.questions.length})` : 'No');
+    console.log('[Frontend API] Practice set type:', data.type);
+    
+    // Ensure type is properly set
+    if (!data.type) {
+      console.warn('[Frontend API] No type found in practice set data, defaulting to mixed');
+      data.type = 'mixed';
+    }
     
     return NextResponse.json(data);
   } catch (error) {
@@ -84,18 +80,31 @@ export async function PATCH(
     // Forward the authorization header or extract from cookie
     const authHeader = request.headers.get('authorization');
     const cookieHeader = request.headers.get('cookie');
+    
+    // Extract token from cookie if not in header
     const token = extractTokenFromCookie(cookieHeader);
+    
+    console.log('[PATCH] Auth header:', authHeader);
+    console.log('[PATCH] Cookie header:', cookieHeader ? 'Present' : 'Not present');
+    console.log('[PATCH] Token from cookie:', token ? 'Present' : 'Not present');
     
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
     
-    // Add Authorization header if we have a token (either from header or cookie)
+    // Add Authorization header if we have it
     if (authHeader) {
       headers['Authorization'] = authHeader;
+      console.log('[PATCH] Using Authorization header from request');
     } else if (token) {
       headers['Authorization'] = `Bearer ${token}`;
+      console.log('[PATCH] Using token from cookie for Authorization header');
+    } else {
+      console.log('[PATCH] No authorization token found');
     }
+    
+    console.log('[PATCH] Request body:', JSON.stringify(body));
+    console.log('[PATCH] Headers being sent:', headers);
     
     const response = await fetch(`${backendUrl}/practice/sets/${id}`, {
       method: 'PATCH',
@@ -104,9 +113,22 @@ export async function PATCH(
       credentials: 'include'
     });
     
-    if (!response.ok) {
+    console.log(`[PATCH] Backend response status: ${response.status}`);
+    
+    if (response.status === 401) {
+      console.log('[PATCH] Authentication failed (401), returning error response');
       return NextResponse.json(
-        { message: `Backend error: ${response.statusText}` },
+        { message: 'Authentication failed. Please log in again.' },
+        { status: 401 }
+      );
+    }
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[PATCH] Error response:', errorText);
+      
+      return NextResponse.json(
+        { message: `Backend error: ${response.statusText}`, details: errorText },
         { status: response.status }
       );
     }
@@ -114,9 +136,9 @@ export async function PATCH(
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
-    console.error(`Error updating practice set ${id}:`, error);
+    console.error(`[PATCH] Error updating practice set ${id}:`, error);
     return NextResponse.json(
-      { message: 'Failed to update practice set' },
+      { message: 'Failed to update practice set', error: String(error) },
       { status: 500 }
     );
   }
@@ -135,17 +157,14 @@ export async function DELETE(
     // Forward the authorization header or extract from cookie
     const authHeader = request.headers.get('authorization');
     const cookieHeader = request.headers.get('cookie');
-    const token = extractTokenFromCookie(cookieHeader);
     
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
     
-    // Add Authorization header if we have a token (either from header or cookie)
+    // Add Authorization header if we have it
     if (authHeader) {
       headers['Authorization'] = authHeader;
-    } else if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
     }
     
     const response = await fetch(`${backendUrl}/practice/sets/${id}`, {
@@ -171,6 +190,11 @@ export async function DELETE(
   }
 }
 
-
+// Helper function to extract token from cookie
+function extractTokenFromCookie(cookieHeader: string | null): string | null {
+  if (!cookieHeader) return null;
+  const tokenMatch = cookieHeader.match(/token=([^;]+)/);
+  return tokenMatch ? tokenMatch[1] : null;
+}
 
 

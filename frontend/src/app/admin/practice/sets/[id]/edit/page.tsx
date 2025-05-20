@@ -4,12 +4,11 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/app/context/AuthContext';
 import Link from 'next/link';
-import Image from 'next/image';
 import { use } from 'react';
 import { 
   getPracticeSet,
   updatePracticeSet,
-  getPracticeQuestions,
+  getPracticeQuestions, // Make sure this is imported
   PracticeSet,
   PracticeQuestion,
   Difficulty,
@@ -17,9 +16,12 @@ import {
 } from '@/app/lib/api/practice';
 import { getCategories, Category } from '@/app/lib/api/categories';
 
-export default function EditPracticeSetPage({ params }: { params: { id: string } }) {
+export default function EditPracticeSetPage({ params }: { params: Promise<{ id: string }> }) {
   const { isAuthenticated, user, loading } = useAuth();
   const router = useRouter();
+  const unwrappedParams = use(params);
+  const id = unwrappedParams.id;
+  
   const [practiceSet, setPracticeSet] = useState<PracticeSet | null>(null);
   const [questions, setQuestions] = useState<PracticeQuestion[]>([]);
   const [selectedQuestions, setSelectedQuestions] = useState<string[]>([]);
@@ -33,7 +35,14 @@ export default function EditPracticeSetPage({ params }: { params: { id: string }
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'text' | 'image' | 'fill'>('all');
-  const id = params.id;
+
+  // Add this at the top of your component to track component lifecycle
+  useEffect(() => {
+    console.log('Component mounted');
+    return () => {
+      console.log('Component unmounted');
+    };
+  }, []);
 
   // Auth protection
   useEffect(() => {
@@ -54,17 +63,38 @@ export default function EditPracticeSetPage({ params }: { params: { id: string }
 
   const fetchPracticeSet = async () => {
     try {
+      console.log('Fetching practice set with ID:', id);
       const data = await getPracticeSet(id);
+      console.log('Raw practice set data from API:', data);
+      
+      // Check if type exists in the data
+      if (data.type) {
+        console.log('Practice set type from database:', data.type);
+      } else {
+        console.log('No type found in practice set data, defaulting to mixed');
+      }
+      
+      // Set the practice set data
       setPracticeSet(data);
-      setPracticeSetName(data.name);
+      
+      // Set individual form fields
+      setPracticeSetName(data.name || '');
       setPracticeSetDescription(data.description || '');
       setPracticeSetDifficulty(data.difficulty || 'medium');
       setPracticeSetCategory(data.category || '');
-      setPracticeSetType(data.type || 'mixed');
+      
+      // Explicitly set the type with a delay to ensure it's not overridden
+      setTimeout(() => {
+        console.log('Setting practice set type to:', data.type || 'mixed');
+        setPracticeSetType(data.type || 'mixed');
+      }, 0);
+      
       setSelectedQuestions(data.questionIds || []);
+      setPageLoading(false);
     } catch (err) {
       console.error('Error fetching practice set:', err);
       setError('Failed to load practice set');
+      setPageLoading(false);
     }
   };
 
@@ -104,40 +134,42 @@ export default function EditPracticeSetPage({ params }: { params: { id: string }
     }
 
     try {
-      await updatePracticeSet(id, {
+      setPageLoading(true);
+      const updateData = {
         name: practiceSetName,
         description: practiceSetDescription,
         questionIds: selectedQuestions,
         difficulty: practiceSetDifficulty,
         category: practiceSetCategory,
         type: practiceSetType
-      });
+      };
+      
+      console.log('Updating practice set with data:', updateData);
+      
+      await updatePracticeSet(id, updateData);
       
       router.push(`/admin/practice/sets/${id}`);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error updating practice set:', err);
-      setError('Failed to update practice set');
+      
+      if (err.status === 401) {
+        setError('Authentication failed. Please log in again.');
+        // Redirect to login page after a short delay
+        setTimeout(() => {
+          router.push('/login?redirect=' + encodeURIComponent(window.location.pathname));
+        }, 2000);
+      } else {
+        setError(`Failed to update practice set: ${err.message || 'Unknown error'}`);
+      }
+    } finally {
+      setPageLoading(false);
     }
   };
 
-  // Determine the practice set type based on selected questions
+  // Add a useEffect to log state changes
   useEffect(() => {
-    if (selectedQuestions.length === 0) {
-      setPracticeSetType('mixed');
-      return;
-    }
-
-    const selectedQuestionObjects = questions.filter(q => selectedQuestions.includes(q.id));
-    const types = new Set(selectedQuestionObjects.map(q => q.type));
-
-    if (types.size === 1) {
-      // If all selected questions are of the same type
-      setPracticeSetType(selectedQuestionObjects[0].type as 'text' | 'image' | 'fill');
-    } else {
-      // If there are multiple types
-      setPracticeSetType('mixed');
-    }
-  }, [selectedQuestions, questions]);
+    console.log('Current practice set type state:', practiceSetType);
+  }, [practiceSetType]);
 
   const toggleQuestionSelection = (questionId: string) => {
     if (selectedQuestions.includes(questionId)) {
@@ -226,7 +258,10 @@ export default function EditPracticeSetPage({ params }: { params: { id: string }
                   <div className="relative">
                     <select
                       value={practiceSetType}
-                      onChange={(e) => setPracticeSetType(e.target.value as PracticeSetType)}
+                      onChange={(e) => {
+                        console.log('Type manually changed to:', e.target.value);
+                        setPracticeSetType(e.target.value as PracticeSetType);
+                      }}
                       className="w-full p-2 border rounded-md appearance-none"
                     >
                       <option value="text">Text</option>
@@ -240,11 +275,7 @@ export default function EditPracticeSetPage({ params }: { params: { id: string }
                       </svg>
                     </div>
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {practiceSetType === 'mixed' 
-                      ? 'Mixed type includes different question types' 
-                      : `All questions will be of type: ${practiceSetType}`}
-                  </p>
+                  
                 </div>
                 
                 <div>

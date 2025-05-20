@@ -1,8 +1,12 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { getRandomPracticeQuestions, PracticeQuestion } from '@/app/lib/api/practice';
 import { useRouter } from 'next/navigation';
+import { 
+  getRandomPracticeQuestions, // Make sure this is imported
+  getPracticeQuestions, // Make sure this is imported
+  PracticeQuestion 
+} from '@/app/lib/api/practice';
 import Image from 'next/image';
 
 export default function PracticeClient() {
