@@ -1,11 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-// Helper function to extract token from cookie
-function extractTokenFromCookie(cookieHeader: string | null): string | null {
-  if (!cookieHeader) return null;
-  const tokenMatch = cookieHeader.match(/token=([^;]+)/);
-  return tokenMatch ? tokenMatch[1] : null;
-}
+import { extractTokenFromCookie } from '@/app/lib/auth/cookies';
 
 // GET all practice sets
 export async function GET(request: NextRequest) {
@@ -15,17 +9,14 @@ export async function GET(request: NextRequest) {
     // Forward the authorization header or extract from cookie
     const authHeader = request.headers.get('authorization');
     const cookieHeader = request.headers.get('cookie');
-    const token = extractTokenFromCookie(cookieHeader);
     
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
     
-    // Add Authorization header if we have a token (either from header or cookie)
+    // Add Authorization header if we have it
     if (authHeader) {
       headers['Authorization'] = authHeader;
-    } else if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
     }
     
     const response = await fetch(`${backendUrl}/practice/sets`, {
@@ -63,6 +54,8 @@ export async function POST(request: NextRequest) {
     const cookieHeader = request.headers.get('cookie');
     const token = extractTokenFromCookie(cookieHeader);
     
+    console.log('[POST] Creating practice set with data:', body);
+    
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
@@ -70,8 +63,12 @@ export async function POST(request: NextRequest) {
     // Add Authorization header if we have a token (either from header or cookie)
     if (authHeader) {
       headers['Authorization'] = authHeader;
+      console.log('[POST] Using Authorization header from request');
     } else if (token) {
       headers['Authorization'] = `Bearer ${token}`;
+      console.log('[POST] Using token from cookie for Authorization header');
+    } else {
+      console.log('[POST] No authorization token found');
     }
     
     const response = await fetch(`${backendUrl}/practice/sets`, {
@@ -82,9 +79,9 @@ export async function POST(request: NextRequest) {
     });
     
     if (!response.ok) {
-      console.error('Backend error status:', response.status);
+      console.error('[POST] Backend error status:', response.status);
       const errorText = await response.text();
-      console.error('Backend error details:', errorText);
+      console.error('[POST] Backend error details:', errorText);
       
       return NextResponse.json(
         { message: `Backend error: ${response.statusText}`, details: errorText },
@@ -93,13 +90,15 @@ export async function POST(request: NextRequest) {
     }
     
     const data = await response.json();
+    console.log('[POST] Practice set created successfully:', data);
     return NextResponse.json(data);
   } catch (error) {
-    console.error('Error creating practice set:', error);
+    console.error('[POST] Error creating practice set:', error);
     return NextResponse.json(
       { message: 'Failed to create practice set', error: String(error) },
       { status: 500 }
     );
   }
 }
+
 

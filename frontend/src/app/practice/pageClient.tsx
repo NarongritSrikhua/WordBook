@@ -3,14 +3,18 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
-  getRandomPracticeQuestions, // Make sure this is imported
-  getPracticeQuestions, // Make sure this is imported
-  PracticeQuestion 
+  getRandomPracticeQuestions,
+  getPracticeQuestions,
+  getPracticeSets,
+  getPracticeSet,
+  PracticeQuestion,
+  PracticeSet
 } from '@/app/lib/api/practice';
 import Image from 'next/image';
 
 export default function PracticeClient() {
-    const [questions, setQuestions] = useState<PracticeQuestion[]>([]);
+    // Rename the state variables to avoid any potential conflicts
+    const [practiceQuestions, setPracticeQuestions] = useState<PracticeQuestion[]>([]);
     const [filteredQuestions, setFilteredQuestions] = useState<PracticeQuestion[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -26,39 +30,124 @@ export default function PracticeClient() {
     const [questionType, setQuestionType] = useState<'all' | 'text' | 'image' | 'fill'>('all');
     const timerRef = useRef<NodeJS.Timeout | null>(null);
     const router = useRouter();
+    
+    // State for practice sets
+    const [practiceSets, setPracticeSets] = useState<PracticeSet[]>([]);
+    const [selectedSetId, setSelectedSetId] = useState<string | null>(null);
+    const [showSetSelection, setShowSetSelection] = useState(true);
 
-    // Fetch questions on component mount
+    // Fetch practice sets on component mount
     useEffect(() => {
-        const fetchQuestions = async () => {
+        const fetchPracticeSets = async () => {
             try {
                 setLoading(true);
-                const data = await getRandomPracticeQuestions(10);
-                setQuestions(data);
-                setFilteredQuestions(data);
+                const data = await getPracticeSets();
+                console.log('Fetched practice sets:', data);
+                setPracticeSets(data);
                 setLoading(false);
             } catch (err) {
-                console.error('Error fetching practice questions:', err);
-                setError('Failed to load practice questions. Please try again later.');
+                console.error('Error fetching practice sets:', err);
+                setError('Failed to load practice sets. Please try again later.');
                 setLoading(false);
             }
         };
 
-        fetchQuestions();
+        fetchPracticeSets();
     }, []);
+
+    // Fetch questions when a practice set is selected
+    const handleSetSelection = async (setId: string) => {
+        try {
+            console.log('Selecting practice set:', setId);
+            setLoading(true);
+            const practiceSet = await getPracticeSet(setId, true);
+            console.log('Fetched practice set:', practiceSet);
+            
+            if (practiceSet.questions && practiceSet.questions.length > 0) {
+                console.log('Using questions from practice set response');
+                setPracticeQuestions(practiceSet.questions);
+                setFilteredQuestions(practiceSet.questions);
+            } else if (practiceSet.questionIds && practiceSet.questionIds.length > 0) {
+                // If questions aren't included in the response, fetch all questions and filter
+                console.log('Fetching all questions and filtering');
+                const allQuestions = await getPracticeQuestions();
+                const setQuestions = allQuestions.filter(q => 
+                    practiceSet.questionIds.includes(q.id)
+                );
+                console.log('Filtered questions:', setQuestions);
+                setPracticeQuestions(setQuestions);
+                setFilteredQuestions(setQuestions);
+            } else {
+                console.log('No questions found in practice set');
+                setError('This practice set has no questions.');
+            }
+            
+            setSelectedSetId(setId);
+            setShowSetSelection(false);
+            setCurrentQuestionIndex(0);
+            setSelectedAnswer(null);
+            setUserInput('');
+            setIsCorrectFill(null);
+            setScore(0);
+            setStreak(0);
+            setShowResults(false);
+            setTimer(30);
+            setTimerActive(true);
+            setLoading(false);
+        } catch (err) {
+            console.error('Error fetching practice set questions:', err);
+            setError('Failed to load practice questions. Please try again later.');
+            setLoading(false);
+        }
+    };
+
+    // Start random practice (existing functionality)
+    const startRandomPractice = async () => {
+        try {
+            console.log('Starting random practice');
+            setLoading(true);
+            const data = await getRandomPracticeQuestions(10);
+            console.log('Fetched random questions:', data);
+            setPracticeQuestions(data);
+            setFilteredQuestions(data);
+            setSelectedSetId(null);
+            setShowSetSelection(false);
+            setCurrentQuestionIndex(0);
+            setSelectedAnswer(null);
+            setUserInput('');
+            setIsCorrectFill(null);
+            setScore(0);
+            setStreak(0);
+            setShowResults(false);
+            setTimer(30);
+            setTimerActive(true);
+            setLoading(false);
+        } catch (err) {
+            console.error('Error fetching random practice questions:', err);
+            setError('Failed to load practice questions. Please try again later.');
+            setLoading(false);
+        }
+    };
+
+    // Return to set selection
+    const backToSetSelection = () => {
+        setShowSetSelection(true);
+        setShowResults(false);
+    };
 
     // Filter questions based on selected type
     useEffect(() => {
         if (questionType === 'all') {
-            setFilteredQuestions(questions);
+            setFilteredQuestions(practiceQuestions);
         } else {
-            setFilteredQuestions(questions.filter(q => q.type === questionType));
+            setFilteredQuestions(practiceQuestions.filter(q => q.type === questionType));
         }
         // Reset to first question when filter changes
         setCurrentQuestionIndex(0);
         setSelectedAnswer(null);
         setUserInput('');
         setIsCorrectFill(null);
-    }, [questionType, questions]);
+    }, [questionType, practiceQuestions]);
 
     // Timer effect
     useEffect(() => {
@@ -127,7 +216,7 @@ export default function PracticeClient() {
         try {
             setLoading(true);
             const data = await getRandomPracticeQuestions(10);
-            setQuestions(data);
+            setPracticeQuestions(data);
             setFilteredQuestions(questionType === 'all' ? data : data.filter(q => q.type === questionType));
             setCurrentQuestionIndex(0);
             setSelectedAnswer(null);
@@ -146,6 +235,7 @@ export default function PracticeClient() {
         }
     };
 
+    // Modify the loading state to show a loading spinner
     if (loading) {
         return (
             <div className="flex justify-center items-center h-screen">
@@ -154,6 +244,7 @@ export default function PracticeClient() {
         );
     }
 
+    // Modify the error state to show an error message
     if (error) {
         return (
             <div className="container mx-auto px-4 py-8 mt-16">
@@ -173,39 +264,72 @@ export default function PracticeClient() {
         );
     }
 
-    if (showResults) {
+    // Add a new component for practice set selection
+    if (showSetSelection) {
         return (
             <div className="container mx-auto px-4 py-8 mt-16">
-                <div className="max-w-md mx-auto bg-white rounded-xl shadow-lg overflow-hidden md:max-w-2xl">
-                    <div className="p-8">
-                        <h2 className="text-2xl font-bold text-center mb-6">Practice Results</h2>
-                        <div className="bg-[#FADADD] rounded-lg p-6 mb-6">
-                            <div className="text-center">
-                                <p className="text-gray-700 mb-2">Your Score</p>
-                                <p className="text-4xl font-bold text-[#FF6B8B]">{score} / {filteredQuestions.length}</p>
-                                <p className="text-gray-600 mt-2">
-                                    {score === filteredQuestions.length 
-                                        ? 'Perfect! Amazing job!' 
-                                        : score >= filteredQuestions.length * 0.7 
-                                            ? 'Great job!' 
-                                            : 'Keep practicing!'}
-                                </p>
+                <div className="max-w-4xl mx-auto">
+                    <h1 className="text-3xl font-bold text-center mb-8 text-gray-800">Choose a Practice Set</h1>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                        {/* Random Practice Option */}
+                        <div 
+                            className="bg-white rounded-xl shadow-lg overflow-hidden cursor-pointer hover:shadow-xl transition-shadow border-2 border-transparent hover:border-[#FF6B8B]"
+                            onClick={startRandomPractice}
+                        >
+                            <div className="p-6">
+                                <h2 className="text-xl font-bold mb-2 text-[#FF6B8B]">Random Practice</h2>
+                                <p className="text-gray-600 mb-4">Practice with 10 random questions from all categories.</p>
+                                <div className="flex justify-end">
+                                    <button className="bg-[#FF6B8B] text-white px-4 py-2 rounded-lg hover:bg-opacity-90 transition-colors">
+                                        Start
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                        <div className="flex justify-center space-x-4">
-                            <button 
-                                onClick={restartPractice}
-                                className="bg-[#FF6B8B] text-white px-6 py-2 rounded-lg hover:bg-opacity-90 transition-colors"
+                        
+                        {/* Practice Sets */}
+                        {practiceSets.map(set => (
+                            <div 
+                                key={set.id}
+                                className="bg-white rounded-xl shadow-lg overflow-hidden cursor-pointer hover:shadow-xl transition-shadow border-2 border-transparent hover:border-[#FF6B8B]"
+                                onClick={() => handleSetSelection(set.id)}
                             >
-                                Practice Again
-                            </button>
-                            <button 
-                                onClick={() => router.push('/')}
-                                className="bg-gray-200 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-300 transition-colors"
-                            >
-                                Return Home
-                            </button>
-                        </div>
+                                <div className="p-6">
+                                    <div className="flex justify-between items-start mb-2">
+                                        <h2 className="text-xl font-bold text-gray-800">{set.name}</h2>
+                                        <span className={`text-xs font-medium px-2 py-1 rounded-full ${
+                                            set.difficulty === 'easy' ? 'bg-green-100 text-green-800' :
+                                            set.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                                            'bg-red-100 text-red-800'
+                                        }`}>
+                                            {set.difficulty?.toUpperCase()}
+                                        </span>
+                                    </div>
+                                    <p className="text-gray-600 mb-4">{set.description || 'No description available.'}</p>
+                                    <div className="flex justify-between items-center">
+                                        <div>
+                                            <span className="text-sm text-gray-500">
+                                                {set.questionIds?.length || 0} questions
+                                            </span>
+                                            {set.category && (
+                                                <span className="ml-2 bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded-full">
+                                                    {set.category}
+                                                </span>
+                                            )}
+                                            {set.type && set.type !== 'mixed' && (
+                                                <span className="ml-2 bg-purple-100 text-purple-800 text-xs font-medium px-2 py-1 rounded-full">
+                                                    {set.type}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <button className="bg-[#FF6B8B] text-white px-4 py-2 rounded-lg hover:bg-opacity-90 transition-colors">
+                                            Practice
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 </div>
             </div>
@@ -239,6 +363,46 @@ export default function PracticeClient() {
         );
     }
 
+    // Modify the results screen to include a "Practice Another Set" button
+    if (showResults) {
+        return (
+            <div className="container mx-auto px-4 py-8 mt-16">
+                <div className="max-w-md mx-auto bg-white rounded-xl shadow-lg overflow-hidden md:max-w-2xl">
+                    <div className="p-8">
+                        <h2 className="text-2xl font-bold text-center mb-6">Practice Results</h2>
+                        <div className="bg-[#FADADD] rounded-lg p-6 mb-6">
+                            <div className="text-center">
+                                <p className="text-gray-700 mb-2">Your Score</p>
+                                <p className="text-4xl font-bold text-[#FF6B8B]">{score} / {filteredQuestions.length}</p>
+                                <p className="text-gray-600 mt-2">
+                                    {score === filteredQuestions.length 
+                                        ? 'Perfect! Amazing job!' 
+                                        : score >= filteredQuestions.length * 0.7 
+                                            ? 'Great job!' 
+                                            : 'Keep practicing!'}
+                                </p>
+                            </div>
+                        </div>
+                        <div className="flex justify-center space-x-4">
+                            <button 
+                                onClick={selectedSetId ? () => handleSetSelection(selectedSetId) : startRandomPractice}
+                                className="bg-[#FF6B8B] text-white px-6 py-2 rounded-lg hover:bg-opacity-90 transition-colors"
+                            >
+                                Practice Again
+                            </button>
+                            <button 
+                                onClick={backToSetSelection}
+                                className="bg-gray-200 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-300 transition-colors"
+                            >
+                                Choose Another Set
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     const currentQuestion = filteredQuestions[currentQuestionIndex];
 
     return (
@@ -263,7 +427,7 @@ export default function PracticeClient() {
                     </div>
 
                     {/* Filter buttons */}
-                    <div className="flex justify-center mb-6 space-x-2">
+                    {/* <div className="flex justify-center mb-6 space-x-2">
                         <button 
                             onClick={() => setQuestionType('all')}
                             className={`px-3 py-1 rounded-full text-sm ${questionType === 'all' ? 'bg-[#FF6B8B] text-white' : 'bg-gray-200 text-gray-700'}`}
@@ -288,7 +452,7 @@ export default function PracticeClient() {
                         >
                             Fill
                         </button>
-                    </div>
+                    </div> */}
 
                     {/* Timer */}
                     <div className="mb-6">
