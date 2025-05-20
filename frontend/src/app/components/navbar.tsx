@@ -11,6 +11,7 @@ export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, isAuthenticated, logout } = useAuth();
+  const isAdmin = user?.role === 'admin';
   
   const handleLogout = async () => {
     await logout();
@@ -121,6 +122,21 @@ export default function Navbar() {
                     >
                       Dashboard
                     </Link>
+                    
+                    {/* Admin Dashboard Link - Only visible for admin users */}
+                    {isAdmin && (
+                      <Link
+                        href="/admin/dashboard"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        role="menuitem"
+                        tabIndex={-1}
+                        id="user-menu-item-admin"
+                        onClick={() => setIsProfileOpen(false)}
+                      >
+                        Admin Dashboard
+                      </Link>
+                    )}
+                    
                     <Link
                       href="/profile"
                       className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
@@ -293,6 +309,18 @@ export default function Navbar() {
               >
                 Dashboard
               </Link>
+              
+              {/* Admin Dashboard Link - Only visible for admin users */}
+              {isAdmin && (
+                <Link
+                  href="/admin/dashboard"
+                  className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  onClick={() => setIsProfileOpen(false)}
+                >
+                  Admin Dashboard
+                </Link>
+              )}
+              
               <Link
                 href="/profile"
                 className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
