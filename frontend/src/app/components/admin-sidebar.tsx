@@ -136,6 +136,22 @@ export default function AdminSidebar({ userName }: AdminSidebarProps) {
           </svg>
           {!isCollapsed && <span>Flashcards</span>}
         </Link>
+
+        <Link 
+          href="/admin/categories" 
+          className={`mt-1 group flex items-center px-2 py-3 text-base font-medium rounded-md hover:bg-gray-50 transition-colors ${
+            isActive('/admin/categories') 
+              ? 'bg-pink-50 text-[#ff6b8b]' 
+              : 'text-gray-700 hover:text-[#ff6b8b]'
+          }`}
+        >
+          <svg className={`${isCollapsed ? 'mx-auto' : 'mr-3'} h-6 w-6 ${
+            isActive('/admin/categories') ? 'text-[#ff6b8b]' : 'text-gray-500 group-hover:text-[#ff6b8b]'
+          }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+          </svg>
+          {!isCollapsed && <span>Categories</span>}
+        </Link>
         
         <Link 
           href="/admin/settings" 

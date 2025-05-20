@@ -1,16 +1,21 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Flashcard } from './entities/flashcard.entity';
+import { Category } from './entities/category.entity';
 import { CreateFlashcardDto } from './dto/create-flashcard.dto';
 import { UpdateFlashcardDto } from './dto/update-flashcard.dto';
 import { ReviewFlashcardDto } from './dto/review-flashcard.dto';
+import { CreateCategoryDto } from './dto/create-category.dto';
+import { UpdateCategoryDto } from './dto/update-category.dto';
 
 @Injectable()
 export class FlashcardsService {
   constructor(
     @InjectRepository(Flashcard)
     private flashcardsRepository: Repository<Flashcard>,
+    @InjectRepository(Category)
+    private categoriesRepository: Repository<Category>,
   ) {}
 
   async create(createFlashcardDto: CreateFlashcardDto, userId: string): Promise<Flashcard> {
@@ -107,6 +112,54 @@ export class FlashcardsService {
       throw new NotFoundException(`Flashcard with ID ${id} not found`);
     }
   }
+
+  // Category management methods
+  async findAllCategories() {
+    return this.categoriesRepository.find({
+      order: {
+        name: 'ASC',
+      },
+    });
+  }
+
+  async createCategory(createCategoryDto: CreateCategoryDto) {
+    try {
+      const category = this.categoriesRepository.create(createCategoryDto);
+      return await this.categoriesRepository.save(category);
+    } catch (error) {
+      if (error.code === '23505') { // PostgreSQL unique violation code
+        throw new ConflictException(`Category with name "${createCategoryDto.name}" already exists`);
+      }
+      throw error;
+    }
+  }
+
+  async updateCategory(id: string, updateCategoryDto: UpdateCategoryDto) {
+    const category = await this.categoriesRepository.findOne({ where: { id } });
+    
+    if (!category) {
+      throw new NotFoundException(`Category with ID ${id} not found`);
+    }
+    
+    try {
+      Object.assign(category, updateCategoryDto);
+      return await this.categoriesRepository.save(category);
+    } catch (error) {
+      if (error.code === '23505') { // PostgreSQL unique violation code
+        throw new ConflictException(`Category with name "${updateCategoryDto.name}" already exists`);
+      }
+      throw error;
+    }
+  }
+
+  async removeCategory(id: string) {
+    const result = await this.categoriesRepository.delete(id);
+    
+    if (result.affected === 0) {
+      throw new NotFoundException(`Category with ID ${id} not found`);
+    }
+  }
 }
+
 
 

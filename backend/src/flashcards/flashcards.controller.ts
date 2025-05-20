@@ -1,12 +1,12 @@
-import { Controller, Get, Post, Body, Param, Put, Delete, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Body, Put, Param, Delete, UseGuards, Request } from '@nestjs/common';
 import { FlashcardsService } from './flashcards.service';
 import { CreateFlashcardDto } from './dto/create-flashcard.dto';
 import { UpdateFlashcardDto } from './dto/update-flashcard.dto';
 import { ReviewFlashcardDto } from './dto/review-flashcard.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '../users/entities/user.entity';
+import { CreateCategoryDto } from './dto/create-category.dto';
+import { UpdateCategoryDto } from './dto/update-category.dto';
 
 @Controller('flashcards')
 export class FlashcardsController {
@@ -24,6 +24,31 @@ export class FlashcardsController {
     return this.flashcardsService.create(createFlashcardDto, req.user.userId);
   }
 
+  // Categories endpoints - must be placed BEFORE the :id routes to avoid conflict
+  @Get('categories')
+  findAllCategories() {
+    return this.flashcardsService.findAllCategories();
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('categories')
+  createCategory(@Body() createCategoryDto: CreateCategoryDto) {
+    return this.flashcardsService.createCategory(createCategoryDto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Put('categories/:id')
+  updateCategory(@Param('id') id: string, @Body() updateCategoryDto: UpdateCategoryDto) {
+    return this.flashcardsService.updateCategory(id, updateCategoryDto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete('categories/:id')
+  removeCategory(@Param('id') id: string) {
+    return this.flashcardsService.removeCategory(id);
+  }
+
+  // Flashcard endpoints
   @UseGuards(JwtAuthGuard)
   @Get(':id')
   findOne(@Param('id') id: string, @Request() req) {
@@ -58,4 +83,6 @@ export class FlashcardsController {
     return this.flashcardsService.review(id, reviewFlashcardDto, req.user.userId);
   }
 }
+
+
 
