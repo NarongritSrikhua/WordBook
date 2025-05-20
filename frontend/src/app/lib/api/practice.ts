@@ -68,8 +68,17 @@ export async function getPracticeQuestions(): Promise<PracticeQuestion[]> {
 }
 
 // Get random practice questions
-export const getRandomPracticeQuestions = async (count = 10): Promise<PracticeQuestion[]> => {
-  return fetchAPI(`/api/practice/questions/random?count=${count}`);
+export const getRandomPracticeQuestions = async (count = 10, category?: string): Promise<PracticeQuestion[]> => {
+  let url = `/api/practice/questions/random?count=${count}`;
+  if (category) {
+    url += `&category=${encodeURIComponent(category)}`;
+  }
+  return fetchAPI(url);
+};
+
+// Get all available categories
+export const getCategories = async (): Promise<string[]> => {
+  return fetchAPI('/api/practice/category');
 };
 
 // Get a single practice question by ID
@@ -222,6 +231,8 @@ export const deletePracticeSet = async (id: string): Promise<void> => {
     method: 'DELETE',
   });
 };
+
+
 
 
 

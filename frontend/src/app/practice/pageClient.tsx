@@ -7,6 +7,7 @@ import {
   getPracticeQuestions,
   getPracticeSets,
   getPracticeSet,
+  getCategories,
   PracticeQuestion,
   PracticeSet
 } from '@/app/lib/api/practice';
@@ -36,6 +37,11 @@ export default function PracticeClient() {
     const [selectedSetId, setSelectedSetId] = useState<string | null>(null);
     const [showSetSelection, setShowSetSelection] = useState(true);
 
+    // State for categories
+    const [categories, setCategories] = useState<string[]>([]);
+    const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+    const [categoriesError, setCategoriesError] = useState<boolean>(false);
+
     // Fetch practice sets on component mount
     useEffect(() => {
         const fetchPracticeSets = async () => {
@@ -53,6 +59,33 @@ export default function PracticeClient() {
         };
 
         fetchPracticeSets();
+    }, []);
+
+    // Fetch categories on component mount
+    useEffect(() => {
+        const fetchCategories = async () => {
+            try {
+                console.log('Fetching practice categories');
+                setCategoriesError(false);
+                const data = await getCategories();
+                console.log('Fetched categories:', data);
+                
+                if (Array.isArray(data) && data.length > 0) {
+                    setCategories(data);
+                } else {
+                    // If we got an empty array or non-array, use default categories
+                    console.warn('No categories returned, using defaults');
+                    setCategories(['General Knowledge', 'Mathematics', 'Science', 'History', 'Geography', 'Language']);
+                }
+            } catch (err) {
+                console.error('Error fetching categories:', err);
+                setCategoriesError(true);
+                // Set default categories to avoid breaking the UI
+                setCategories(['General Knowledge', 'Mathematics', 'Science', 'History', 'Geography', 'Language']);
+            }
+        };
+        
+        fetchCategories();
     }, []);
 
     // Fetch questions when a practice set is selected
@@ -102,14 +135,32 @@ export default function PracticeClient() {
     };
 
     // Start random practice (existing functionality)
-    const startRandomPractice = async () => {
+    const startRandomPractice = async (category?: string) => {
         try {
-            console.log('Starting random practice');
+            console.log('Starting random practice', category ? `for category: ${category}` : 'for all categories');
             setLoading(true);
-            const data = await getRandomPracticeQuestions(10);
+            
+            // Pass the category to the API call if provided
+            const data = await getRandomPracticeQuestions(10, category);
             console.log('Fetched random questions:', data);
-            setPracticeQuestions(data);
-            setFilteredQuestions(data);
+            
+            // Double-check category filtering on the client side
+            let filteredData = data;
+            if (category && Array.isArray(data)) {
+                console.log(`Filtering questions by category: ${category}`);
+                filteredData = data.filter(q => q.category === category);
+                console.log(`After filtering: ${filteredData.length} questions remain`);
+                
+                // If we have too few questions after filtering, show a warning
+                if (filteredData.length < 5) {
+                    console.warn(`Very few questions (${filteredData.length}) available for category: ${category}`);
+                    // You could show a warning to the user here
+                }
+            }
+            
+            setPracticeQuestions(filteredData);
+            setFilteredQuestions(filteredData);
+            setSelectedCategory(category || null);
             setSelectedSetId(null);
             setShowSetSelection(false);
             setCurrentQuestionIndex(0);
@@ -271,65 +322,99 @@ export default function PracticeClient() {
                 <div className="max-w-4xl mx-auto">
                     <h1 className="text-3xl font-bold text-center mb-8 text-gray-800">Choose a Practice Set</h1>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                        {/* Random Practice Option */}
-                        <div 
-                            className="bg-white rounded-xl shadow-lg overflow-hidden cursor-pointer hover:shadow-xl transition-shadow border-2 border-transparent hover:border-[#FF6B8B]"
-                            onClick={startRandomPractice}
-                        >
-                            <div className="p-6">
-                                <h2 className="text-xl font-bold mb-2 text-[#FF6B8B]">Random Practice</h2>
-                                <p className="text-gray-600 mb-4">Practice with 10 random questions from all categories.</p>
-                                <div className="flex justify-end">
-                                    <button className="bg-[#FF6B8B] text-white px-4 py-2 rounded-lg hover:bg-opacity-90 transition-colors">
-                                        Start
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        {/* Practice Sets */}
-                        {practiceSets.map(set => (
+                    {/* Random Practice Options */}
+                    <div className="mb-8">
+                        <h2 className="text-2xl font-bold mb-4 text-gray-800">Random Practice</h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {/* All Categories Option */}
                             <div 
-                                key={set.id}
                                 className="bg-white rounded-xl shadow-lg overflow-hidden cursor-pointer hover:shadow-xl transition-shadow border-2 border-transparent hover:border-[#FF6B8B]"
-                                onClick={() => handleSetSelection(set.id)}
+                                onClick={() => startRandomPractice()}
                             >
-                                <div className="p-6">
-                                    <div className="flex justify-between items-start mb-2">
-                                        <h2 className="text-xl font-bold text-gray-800">{set.name}</h2>
-                                        <span className={`text-xs font-medium px-2 py-1 rounded-full ${
-                                            set.difficulty === 'easy' ? 'bg-green-100 text-green-800' :
-                                            set.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                                            'bg-red-100 text-red-800'
-                                        }`}>
-                                            {set.difficulty?.toUpperCase()}
-                                        </span>
-                                    </div>
-                                    <p className="text-gray-600 mb-4">{set.description || 'No description available.'}</p>
-                                    <div className="flex justify-between items-center">
-                                        <div>
-                                            <span className="text-sm text-gray-500">
-                                                {set.questionIds?.length || 0} questions
-                                            </span>
-                                            {set.category && (
-                                                <span className="ml-2 bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded-full">
-                                                    {set.category}
-                                                </span>
-                                            )}
-                                            {set.type && set.type !== 'mixed' && (
-                                                <span className="ml-2 bg-purple-100 text-purple-800 text-xs font-medium px-2 py-1 rounded-full">
-                                                    {set.type}
-                                                </span>
-                                            )}
-                                        </div>
-                                        <button className="bg-[#FF6B8B] text-white px-4 py-2 rounded-lg hover:bg-opacity-90 transition-colors">
-                                            Practice
+                                <div className="p-4">
+                                    <h3 className="text-lg font-bold mb-2 text-[#FF6B8B]">All Categories</h3>
+                                    <p className="text-gray-600 mb-3 text-sm">Practice with random questions from all categories.</p>
+                                    <div className="flex justify-end">
+                                        <button className="bg-[#FF6B8B] text-white px-3 py-1 rounded-lg hover:bg-opacity-90 transition-colors text-sm">
+                                            Start
                                         </button>
                                     </div>
                                 </div>
                             </div>
-                        ))}
+                            
+                            {/* Category-specific options */}
+                            {categories && categories.length > 0 ? (
+                                categories.map(category => (
+                                    <div 
+                                        key={category}
+                                        className="bg-white rounded-xl shadow-lg overflow-hidden cursor-pointer hover:shadow-xl transition-shadow border-2 border-transparent hover:border-[#FF6B8B]"
+                                        onClick={() => startRandomPractice(category)}
+                                    >
+                                        <div className="p-4">
+                                            <h3 className="text-lg font-bold mb-2 text-gray-800">{category}</h3>
+                                            <p className="text-gray-600 mb-3 text-sm">Practice with random questions from this category.</p>
+                                            <div className="flex justify-end">
+                                                <button className="bg-[#FF6B8B] text-white px-3 py-1 rounded-lg hover:bg-opacity-90 transition-colors text-sm">
+                                                    Start
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="bg-white rounded-xl shadow-lg p-4">
+                                    <p className="text-gray-600">No categories available.</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    
+                    {/* Practice Sets */}
+                    <div className="mb-8">
+                        <h2 className="text-2xl font-bold mb-4 text-gray-800">Practice Sets</h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {practiceSets.map(set => (
+                                <div 
+                                    key={set.id}
+                                    className="bg-white rounded-xl shadow-lg overflow-hidden cursor-pointer hover:shadow-xl transition-shadow border-2 border-transparent hover:border-[#FF6B8B]"
+                                    onClick={() => handleSetSelection(set.id)}
+                                >
+                                    <div className="p-6">
+                                        <div className="flex justify-between items-start mb-2">
+                                            <h2 className="text-xl font-bold text-gray-800">{set.name}</h2>
+                                            <span className={`text-xs font-medium px-2 py-1 rounded-full ${
+                                                set.difficulty === 'easy' ? 'bg-green-100 text-green-800' :
+                                                set.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                                                'bg-red-100 text-red-800'
+                                            }`}>
+                                                {set.difficulty?.toUpperCase()}
+                                            </span>
+                                        </div>
+                                        <p className="text-gray-600 mb-4">{set.description || 'No description available.'}</p>
+                                        <div className="flex justify-between items-center">
+                                            <div>
+                                                <span className="text-sm text-gray-500">
+                                                    {set.questionIds?.length || 0} questions
+                                                </span>
+                                                {set.category && (
+                                                    <span className="ml-2 bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded-full">
+                                                        {set.category}
+                                                    </span>
+                                                )}
+                                                {set.type && set.type !== 'mixed' && (
+                                                    <span className="ml-2 bg-purple-100 text-purple-800 text-xs font-medium px-2 py-1 rounded-full">
+                                                        {set.type}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <button className="bg-[#FF6B8B] text-white px-4 py-2 rounded-lg hover:bg-opacity-90 transition-colors">
+                                                Practice
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 </div>
             </div>
