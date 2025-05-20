@@ -248,7 +248,7 @@ const FlashcardsClient = () => {
             const createdCard = await createFlashcard({
                 front: newCard.front,
                 back: newCard.back,
-                category: newCard.category || 'Uncategorized',
+                category: newCard.category,
                 difficulty: 'medium'
             });
             

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import AdminProtectedRoute from '@/app/components/AdminProtectedRoute';
 import { getFlashcards, createFlashcard, updateFlashcard, deleteFlashcard } from '@/app/lib/api/flashcards';
+import { getCategories } from '@/app/lib/api/categories';
 
 interface Flashcard {
   id: string;
@@ -37,27 +38,34 @@ export default function AdminFlashcardsPage() {
   
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
+  const [categories, setCategories] = useState<string[]>([]);
   
   useEffect(() => {
-    const fetchCards = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
+        
+        // Fetch flashcards
         const fetchedCards = await getFlashcards();
         setCards(fetchedCards as Flashcard[]);
+        
+        // Fetch categories
+        const fetchedCategories = await getCategories();
+        // Extract category names from the response
+        const categoryNames = fetchedCategories.map(cat => cat.name);
+        setCategories(categoryNames);
+        
         setError(null);
       } catch (err) {
-        console.error('Error fetching flashcards:', err);
-        setError('Failed to load flashcards');
+        console.error('Error fetching data:', err);
+        setError('Failed to load data');
       } finally {
         setLoading(false);
       }
     };
     
-    fetchCards();
+    fetchData();
   }, []);
-  
-  // Get unique categories for filter dropdown
-  const categories = Array.from(new Set(cards.map(card => card.category)));
   
   // Filtered cards based on search and category
   const filteredCards = cards.filter(card => {
@@ -74,12 +82,17 @@ export default function AdminFlashcardsPage() {
     if (newCard.front.trim() === '' || newCard.back.trim() === '') return;
     
     try {
+      // Ensure category is not empty
+      const categoryToUse = newCard.category.trim() === '' ? 'Uncategorized' : newCard.category;
+      
       const createdCard = await createFlashcard({
         front: newCard.front,
         back: newCard.back,
-        category: newCard.category || 'Uncategorized',
+        category: categoryToUse,
         difficulty: newCard.difficulty
       });
+      
+      console.log('Created card:', createdCard);
       
       setCards([...cards, createdCard as Flashcard]);
       
@@ -101,11 +114,14 @@ export default function AdminFlashcardsPage() {
     if (!editingCard) return;
     
     try {
+      // Ensure category is not empty
+      const categoryToUse = editingCard.category.trim() === '' ? 'Uncategorized' : editingCard.category;
+      
       // Make sure we're sending only the fields that should be updated
       const updateData = {
         front: editingCard.front,
         back: editingCard.back,
-        category: editingCard.category,
+        category: categoryToUse,
         difficulty: editingCard.difficulty
       };
       
@@ -263,18 +279,16 @@ export default function AdminFlashcardsPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                  <input
-                    type="text"
+                  <select
                     className="w-full p-2 border rounded-md"
                     value={newCard.category}
                     onChange={(e) => setNewCard({...newCard, category: e.target.value})}
-                    list="categories"
-                  />
-                  <datalist id="categories">
+                  >
+                    <option value="">Select a Category</option>
                     {categories.map(category => (
-                      <option key={category} value={category} />
+                      <option key={category} value={category}>{category}</option>
                     ))}
-                  </datalist>
+                  </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Difficulty</label>
@@ -333,18 +347,16 @@ export default function AdminFlashcardsPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                  <input
-                    type="text"
+                  <select
                     className="w-full p-2 border rounded-md"
                     value={editingCard.category}
                     onChange={(e) => setEditingCard({...editingCard, category: e.target.value})}
-                    list="edit-categories"
-                  />
-                  <datalist id="edit-categories">
+                  >
+                    <option value="">Select a Category</option>
                     {categories.map(category => (
-                      <option key={category} value={category} />
+                      <option key={category} value={category}>{category}</option>
                     ))}
-                  </datalist>
+                  </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Difficulty</label>
