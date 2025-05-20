@@ -28,11 +28,29 @@ export class PracticeService {
   }
 
   async findOne(id: string): Promise<PracticeQuestion> {
-    const question = await this.practiceRepository.findOne({ where: { id } });
-    if (!question) {
-      throw new NotFoundException(`Practice question with ID ${id} not found`);
+    try {
+      // Check if the id is 'random' and handle it specially
+      if (id === 'random') {
+        this.logger.warn('Attempted to find question with ID "random" - redirecting to random questions endpoint');
+        const randomQuestions = await this.getRandomQuestions(1);
+        if (randomQuestions.length > 0) {
+          return randomQuestions[0];
+        }
+        throw new NotFoundException('No random questions available');
+      }
+      
+      const question = await this.practiceRepository.findOne({ where: { id } });
+      if (!question) {
+        throw new NotFoundException(`Practice question with ID ${id} not found`);
+      }
+      return question;
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      this.logger.error(`Error finding question with ID ${id}:`, error.stack);
+      throw new InternalServerErrorException(`Failed to find question with ID ${id}`);
     }
-    return question;
   }
 
   async update(id: string, updatePracticeDto: UpdatePracticeDto): Promise<PracticeQuestion> {

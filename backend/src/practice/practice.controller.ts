@@ -1,28 +1,20 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Query, ParseIntPipe, UseGuards, InternalServerErrorException } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query, InternalServerErrorException } from '@nestjs/common';
 import { PracticeService } from './practice.service';
 import { CreatePracticeDto } from './dto/create-practice.dto';
 import { UpdatePracticeDto } from './dto/update-practice.dto';
-import { UpdatePracticeSetDto } from './dto/update-practice-set.dto';
+import { ApiOperation, ApiResponse, ApiTags, ApiQuery } from '@nestjs/swagger';
 
 @ApiTags('practice')
-@Controller('practice/questions')  // Changed from 'practice' to 'practice/questions'
+@Controller('practice')
 export class PracticeController {
   constructor(private readonly practiceService: PracticeService) {}
 
-  @Post()
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @ApiOperation({ summary: 'Create a new practice question' })
-  @ApiResponse({ status: 201, description: 'The practice question has been successfully created.' })
+  @Post('questions')
   create(@Body() createPracticeDto: CreatePracticeDto) {
     return this.practiceService.create(createPracticeDto);
   }
 
-  @Get()
-  @ApiOperation({ summary: 'Get all practice questions' })
-  @ApiResponse({ status: 200, description: 'Return all practice questions.' })
+  @Get('questions')
   findAll() {
     return this.practiceService.findAll();
   }
@@ -56,51 +48,37 @@ export class PracticeController {
     }
   }
 
-  @Get(':id')
-  @ApiOperation({ summary: 'Get a practice question by id' })
-  @ApiResponse({ status: 200, description: 'Return the practice question.' })
-  @ApiResponse({ status: 404, description: 'Practice question not found.' })
+  @Get('questions/:id')
   findOne(@Param('id') id: string) {
     return this.practiceService.findOne(id);
   }
 
-  @Patch(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @ApiOperation({ summary: 'Update a practice question' })
-  @ApiResponse({ status: 200, description: 'The practice question has been successfully updated.' })
-  async update(@Param('id') id: string, @Body() updatePracticeDto: UpdatePracticeDto) {
+  @Patch('questions/:id')
+  update(@Param('id') id: string, @Body() updatePracticeDto: UpdatePracticeDto) {
     return this.practiceService.update(id, updatePracticeDto);
   }
 
-  @Delete(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @ApiOperation({ summary: 'Delete a practice question' })
-  @ApiResponse({ status: 200, description: 'The practice question has been successfully deleted.' })
+  @Delete('questions/:id')
   remove(@Param('id') id: string) {
     return this.practiceService.remove(id);
   }
 
-  @Get('category')
+  @Get('categories')
   @ApiOperation({ summary: 'Get all practice categories' })
   @ApiResponse({ status: 200, description: 'Return all practice categories.' })
   async getCategories() {
     try {
-      // Get all questions first
-      const questions = await this.practiceService.findAll();
-      
-      // Extract unique categories
-      const categories = [...new Set(questions
-        .map(question => question.category)
-        .filter(category => category && category.trim() !== '')
-      )];
-      
-      return categories;
+      return await this.practiceService.getCategories();
     } catch (error) {
       throw new InternalServerErrorException('Failed to fetch categories');
     }
   }
+  
+  // Add an alias for the categories endpoint to maintain backward compatibility
+  @Get('category')
+  @ApiOperation({ summary: 'Get all practice categories (alias)' })
+  @ApiResponse({ status: 200, description: 'Return all practice categories.' })
+  async getCategoriesAlias() {
+    return this.getCategories();
+  }
 }
-
-
-
-

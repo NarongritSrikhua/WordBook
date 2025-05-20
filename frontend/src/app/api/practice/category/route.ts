@@ -25,8 +25,8 @@ export async function GET(request: NextRequest) {
     
     // Try different possible backend endpoints
     const possibleEndpoints = [
-      `${backendUrl}/practice/category`,
       `${backendUrl}/practice/categories`,
+      `${backendUrl}/practice/category`,
       `${backendUrl}/practice/questions/categories`
     ];
     
@@ -35,8 +35,8 @@ export async function GET(request: NextRequest) {
     
     // Try each endpoint until one works
     for (const endpoint of possibleEndpoints) {
-      console.log(`[API] Trying backend endpoint: ${endpoint}`);
       try {
+        console.log(`[API] Trying endpoint: ${endpoint}`);
         const tempResponse = await fetch(endpoint, {
           headers,
           credentials: 'include'
@@ -45,28 +45,37 @@ export async function GET(request: NextRequest) {
         if (tempResponse.ok) {
           response = tempResponse;
           endpointUsed = endpoint;
-          console.log(`[API] Successfully connected to endpoint: ${endpoint}`);
+          console.log(`[API] Successfully connected to ${endpoint}`);
           break;
+        } else {
+          console.log(`[API] Endpoint ${endpoint} returned ${tempResponse.status}`);
         }
       } catch (err) {
-        console.log(`[API] Failed to connect to endpoint: ${endpoint}`);
+        console.log(`[API] Error connecting to ${endpoint}:`, err);
       }
     }
     
     // If no endpoint worked, try a fallback approach - get all questions and extract categories
     if (!response) {
       console.log('[API] No category endpoint found, trying to extract from questions');
-      const questionsResponse = await fetch(`${backendUrl}/practice/questions`, {
-        headers,
-        credentials: 'include'
-      });
-      
-      if (questionsResponse.ok) {
-        const questions = await questionsResponse.json();
-        // Extract unique categories from questions
-        const uniqueCategories = [...new Set(questions.map(q => q.category).filter(Boolean))];
-        console.log('[API] Extracted categories from questions:', uniqueCategories);
-        return NextResponse.json(uniqueCategories);
+      try {
+        const questionsResponse = await fetch(`${backendUrl}/practice/questions`, {
+          headers,
+          credentials: 'include'
+        });
+        
+        if (questionsResponse.ok) {
+          const questions = await questionsResponse.json();
+          // Extract unique categories from questions
+          const uniqueCategories = [...new Set(questions
+            .map(q => q.category)
+            .filter(Boolean)
+          )];
+          console.log('[API] Extracted categories from questions:', uniqueCategories);
+          return NextResponse.json(uniqueCategories);
+        }
+      } catch (err) {
+        console.error('[API] Error fetching questions for category extraction:', err);
       }
       
       // If we still can't get categories, return a default set
