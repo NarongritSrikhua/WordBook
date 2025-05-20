@@ -421,12 +421,13 @@ export default function EditPracticeSetPage({ params }: { params: Promise<{ id: 
                             <div className="mb-2">
                               {question.imageUrl && (
                                 <div className="mb-2">
-                                  <Image 
-                                    src={question.imageUrl} 
+                                  <img 
+                                    src={question.imageUrl || ''} 
                                     alt="Question image" 
-                                    width={100} 
-                                    height={100} 
-                                    className="object-cover rounded"
+                                    className="w-full h-auto max-h-40 object-contain rounded-md"
+                                    onError={(e) => {
+                                      e.currentTarget.src = '/placeholder-image.png';
+                                    }}
                                   />
                                 </div>
                               )}

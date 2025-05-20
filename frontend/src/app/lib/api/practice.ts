@@ -227,9 +227,22 @@ export async function updatePracticeSet(id: string, data: Partial<PracticeSet>):
 
 // Delete a practice set
 export const deletePracticeSet = async (id: string): Promise<void> => {
-  return fetchAPI(`/api/practice/sets/${id}`, {
-    method: 'DELETE',
-  });
+  console.log(`[API] Deleting practice set with ID: ${id}`);
+  try {
+    await fetchAPI(`/api/practice/sets/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache'
+      },
+      credentials: 'include'
+    });
+    console.log(`[API] Successfully deleted practice set with ID: ${id}`);
+  } catch (error) {
+    console.error(`[API] Error deleting practice set ${id}:`, error);
+    throw error;
+  }
 };
 
 // Practice History API

@@ -19,11 +19,14 @@ export class FlashcardsService {
   ) {}
 
   async create(createFlashcardDto: CreateFlashcardDto, userId: string): Promise<Flashcard> {
+    console.log('Creating flashcard with DTO:', createFlashcardDto); // Add logging
+    
     const flashcard = this.flashcardsRepository.create({
       ...createFlashcardDto,
       userId,
     });
     
+    console.log('Flashcard entity before save:', flashcard); // Add logging
     return this.flashcardsRepository.save(flashcard);
   }
 
@@ -93,6 +96,8 @@ export class FlashcardsService {
   }
 
   async updateAsAdmin(id: string, updateFlashcardDto: UpdateFlashcardDto): Promise<Flashcard> {
+    console.log(`Admin updating flashcard ${id} with data:`, updateFlashcardDto);
+    
     const flashcard = await this.flashcardsRepository.findOne({ where: { id } });
     
     if (!flashcard) {
@@ -101,16 +106,21 @@ export class FlashcardsService {
     
     // Update the flashcard with new data
     Object.assign(flashcard, updateFlashcardDto);
+    console.log('Flashcard after update:', flashcard);
     
     return this.flashcardsRepository.save(flashcard);
   }
 
   async removeAsAdmin(id: string): Promise<void> {
+    console.log(`Admin removing flashcard ${id}`);
+    
     const result = await this.flashcardsRepository.delete(id);
     
     if (result.affected === 0) {
       throw new NotFoundException(`Flashcard with ID ${id} not found`);
     }
+    
+    console.log(`Flashcard ${id} deleted successfully`);
   }
 
   // Category management methods

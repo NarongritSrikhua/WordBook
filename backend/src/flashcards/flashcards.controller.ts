@@ -59,6 +59,9 @@ export class FlashcardsController {
   @UseGuards(JwtAuthGuard)
   @Put(':id')
   update(@Param('id') id: string, @Body() updateFlashcardDto: UpdateFlashcardDto, @Request() req) {
+    console.log(`Updating flashcard ${id} with data:`, updateFlashcardDto);
+    console.log(`User role: ${req.user.role}, User ID: ${req.user.userId}`);
+    
     // Check if user is admin
     if (req.user.role === UserRole.ADMIN) {
       return this.flashcardsService.updateAsAdmin(id, updateFlashcardDto);
@@ -70,6 +73,9 @@ export class FlashcardsController {
   @UseGuards(JwtAuthGuard)
   @Delete(':id')
   remove(@Param('id') id: string, @Request() req) {
+    console.log(`Deleting flashcard ${id}`);
+    console.log(`User role: ${req.user.role}, User ID: ${req.user.userId}`);
+    
     // Check if user is admin
     if (req.user.role === UserRole.ADMIN) {
       return this.flashcardsService.removeAsAdmin(id);

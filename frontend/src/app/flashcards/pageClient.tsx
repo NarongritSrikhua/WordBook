@@ -11,6 +11,7 @@ interface Flashcard {
     back: string;
     category: string;
     difficulty: 'easy' | 'medium' | 'hard';
+    imageUrl?: string;
     lastReviewed: Date | null;
     nextReview: Date | null;
 }
@@ -28,7 +29,8 @@ const FlashcardsClient = () => {
     const [newCard, setNewCard] = useState({
         front: '',
         back: '',
-        category: ''
+        category: '',
+        imageUrl: ''
     });
     
     const { isAuthenticated, user } = useAuth();
@@ -232,19 +234,27 @@ const FlashcardsClient = () => {
         if (newCard.front.trim() === '' || newCard.back.trim() === '') return;
         
         try {
-            const createdCard = await createFlashcard({
+            const flashcardData = {
                 front: newCard.front,
                 back: newCard.back,
-                category: newCard.category,
-                difficulty: 'medium'
-            });
+                category: newCard.category || 'Uncategorized',
+                imageUrl: newCard.imageUrl || undefined, // Ensure imageUrl is included
+                difficulty: 'medium' as const
+            };
+            
+            console.log('Creating flashcard with data:', flashcardData);
+            
+            const createdCard = await createFlashcard(flashcardData);
+            
+            console.log('Created card:', createdCard);
             
             setCards([...cards, createdCard]);
             
             setNewCard({
                 front: '',
                 back: '',
-                category: ''
+                category: '',
+                imageUrl: '' // Reset imageUrl
             });
             
             setShowAddCard(false);
@@ -324,6 +334,15 @@ const FlashcardsClient = () => {
                             <div className={`flip-card-inner w-full h-full ${animation}`}>
                                 <div className="flip-card-front bg-white rounded-xl shadow-lg p-6 flex flex-col items-center justify-center">
                                     <div className="text-sm text-gray-500 mb-2">{filteredCards[currentCardIndex].category}</div>
+                                    {filteredCards[currentCardIndex].imageUrl && (
+                                        <div className="mb-4 w-full h-32 relative">
+                                            <img 
+                                                src={filteredCards[currentCardIndex].imageUrl} 
+                                                alt="Flashcard image"
+                                                className="object-contain w-full h-full rounded-md"
+                                            />
+                                        </div>
+                                    )}
                                     <div className="text-2xl font-bold text-center text-gray-800">{filteredCards[currentCardIndex].front}</div>
                                     <div className="mt-4 text-sm text-gray-500">Click to flip</div>
                                 </div>
@@ -447,6 +466,32 @@ const FlashcardsClient = () => {
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B8B]"
                                 placeholder="Enter the category (optional)"
                             />
+                        </div>
+                        
+                        <div className="mb-4">
+                            <label className="block text-gray-700 text-sm font-bold mb-2">
+                                Image URL (optional)
+                            </label>
+                            <input 
+                                type="text"
+                                value={newCard.imageUrl}
+                                onChange={(e) => setNewCard({...newCard, imageUrl: e.target.value})}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B8B]"
+                                placeholder="https://example.com/image.jpg"
+                            />
+                            {newCard.imageUrl && (
+                                <div className="mt-2 relative w-full h-40 bg-gray-100 rounded-md overflow-hidden">
+                                    <img 
+                                        src={newCard.imageUrl} 
+                                        alt="Preview" 
+                                        className="object-contain w-full h-full"
+                                        onError={(e) => {
+                                            e.currentTarget.src = '/placeholder-image.png';
+                                            e.currentTarget.alt = 'Invalid image URL';
+                                        }}
+                                    />
+                                </div>
+                            )}
                         </div>
                         
                         <div className="flex justify-end">

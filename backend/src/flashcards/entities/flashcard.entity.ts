@@ -18,6 +18,9 @@ export class Flashcard {
   @Column()
   difficulty: string;
 
+  @Column({ nullable: true })
+  imageUrl: string;
+
   @Column({ nullable: true, type: 'timestamp' })
   lastReviewed: Date;
 

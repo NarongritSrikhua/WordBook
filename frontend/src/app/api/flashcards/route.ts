@@ -87,12 +87,13 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
+    console.log('[POST] Request body:', body); // Add logging
     const headers = buildHeaders(request);
 
     const response = await fetch(`${backendUrl}/flashcards`, {
       method: 'POST',
       headers,
-      credentials: 'include', //  !
+      credentials: 'include',
       body: JSON.stringify(body),
     });
 
@@ -112,6 +113,7 @@ export async function POST(request: NextRequest) {
     }
 
     const data = isJSON ? await response.json() : {};
+    console.log('[POST] Created flashcard:', data); // Add logging
     return NextResponse.json(data);
   } catch (error: any) {
     console.error('[POST] Unexpected error:', error);

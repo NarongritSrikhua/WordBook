@@ -56,10 +56,9 @@ export async function GET(
 // PUT update a flashcard
 export async function PUT(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  context: { params: { id: string } }
 ) {
-  const params = await context.params;
-  const id = params.id;
+  const id = context.params.id;
   const backendUrl = process.env.BACKEND_URL || 'http://localhost:3001';
 
   try {
@@ -70,7 +69,7 @@ export async function PUT(
     console.log(`[PUT] Updating flashcard ${id} with data:`, body);
     console.log(`[PUT] Sending request to: ${backendUrl}/flashcards/${id}`);
     
-    const headers = {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'Cookie': cookieHeader,
     };
@@ -93,8 +92,8 @@ export async function PUT(
     const response = await fetch(`${backendUrl}/flashcards/${id}`, {
       method: 'PUT',
       headers,
-      credentials: 'include',
       body: JSON.stringify(body),
+      credentials: 'include',
     });
     
     console.log(`[PUT] Backend response status: ${response.status}`);
@@ -132,10 +131,9 @@ export async function PUT(
 // DELETE a flashcard
 export async function DELETE(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  context: { params: { id: string } }
 ) {
-  const params = await context.params;
-  const id = params.id;
+  const id = context.params.id;
   const backendUrl = process.env.BACKEND_URL || 'http://localhost:3001';
 
   try {
@@ -145,7 +143,7 @@ export async function DELETE(
     console.log(`[DELETE] Deleting flashcard ${id}`);
     console.log(`[DELETE] Sending request to: ${backendUrl}/flashcards/${id}`);
     
-    const headers = {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'Cookie': cookieHeader,
     };

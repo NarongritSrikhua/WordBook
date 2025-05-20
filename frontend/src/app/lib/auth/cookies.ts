@@ -1,18 +1,22 @@
-// Extract token from cookie string
-export function extractTokenFromCookie(cookieString?: string | null): string | null {
-  if (!cookieString) return null;
+/**
+ * Extracts the JWT token from the cookie header
+ * @param cookieHeader The cookie header string
+ * @returns The token or null if not found
+ */
+export function extractTokenFromCookie(cookieHeader: string | null): string | null {
+  if (!cookieHeader) return null;
   
-  // Try to extract the token from different possible cookie names
-  const tokenCookieNames = ['token', 'auth_token', 'auth_session', 'next-auth.session-token'];
-  
-  for (const cookieName of tokenCookieNames) {
-    const match = new RegExp(`${cookieName}=([^;]+)`).exec(cookieString);
-    if (match) {
-      console.log(`Found token in cookie: ${cookieName}`);
-      return match[1];
-    }
+  // Try to match the token cookie
+  const tokenMatch = cookieHeader.match(/token=([^;]+)/);
+  if (tokenMatch && tokenMatch[1]) {
+    return tokenMatch[1];
   }
   
-  console.log('No token found in cookies:', cookieString);
+  // If not found, try to match the jwt cookie (alternative name)
+  const jwtMatch = cookieHeader.match(/jwt=([^;]+)/);
+  if (jwtMatch && jwtMatch[1]) {
+    return jwtMatch[1];
+  }
+  
   return null;
 }

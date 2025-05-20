@@ -7,6 +7,7 @@ export interface Flashcard {
   back: string;
   category: string;
   difficulty: 'easy' | 'medium' | 'hard';
+  imageUrl?: string;
   lastReviewed?: Date | null;
   nextReview?: Date | null;
 }
@@ -23,26 +24,11 @@ export async function getFlashcard(id: string): Promise<Flashcard> {
 
 // Create a new flashcard
 export async function createFlashcard(flashcard: Omit<Flashcard, 'id'>): Promise<Flashcard> {
+  console.log('Creating flashcard with data:', flashcard); // Add logging
   return fetchAPI('/api/flashcards', {
     method: 'POST',
     body: JSON.stringify(flashcard)
   });
-}
-
-// Update a flashcard
-export async function updateFlashcard(id: string, flashcard: Partial<Flashcard>): Promise<Flashcard> {
-  console.log(`Updating flashcard with ID: ${id}`, flashcard);
-  const response = await fetchAPI(`/api/flashcards/${id}`, {
-    method: 'PUT',
-    body: JSON.stringify(flashcard)
-  });
-  
-  if (!response || !response.id) {
-    console.error('Update failed - received invalid response:', response);
-    throw new Error('Failed to update flashcard - invalid response from server');
-  }
-  
-  return response;
 }
 
 // Delete a flashcard
@@ -53,10 +39,12 @@ export async function deleteFlashcard(id: string): Promise<void> {
   });
 }
 
-// Review a flashcard
-export async function reviewFlashcard(id: string, isCorrect: boolean): Promise<Flashcard> {
-  return fetchAPI(`/api/flashcards/${id}/review`, {
-    method: 'POST',
-    body: JSON.stringify({ isCorrect })
+// Update a flashcard
+export async function updateFlashcard(id: string, flashcard: Partial<Flashcard>): Promise<Flashcard> {
+  console.log(`Updating flashcard with ID: ${id}`, flashcard);
+  return fetchAPI(`/api/flashcards/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(flashcard)
   });
 }
+

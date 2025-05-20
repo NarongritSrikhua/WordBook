@@ -11,6 +11,7 @@ interface Flashcard {
   back: string;
   category: string;
   difficulty: 'easy' | 'medium' | 'hard';
+  imageUrl?: string;
   lastReviewed: Date | null;
   nextReview: Date | null;
 }
@@ -20,6 +21,7 @@ interface NewCardForm {
   back: string;
   category: string;
   difficulty: 'easy' | 'medium' | 'hard';
+  imageUrl?: string;
 }
 
 export default function AdminFlashcardsPage() {
@@ -29,11 +31,18 @@ export default function AdminFlashcardsPage() {
   const [showAddCard, setShowAddCard] = useState(false);
   const [showEditCard, setShowEditCard] = useState(false);
   const [editingCard, setEditingCard] = useState<Flashcard | null>(null);
-  const [newCard, setNewCard] = useState<NewCardForm>({
+  const [newCard, setNewCard] = useState<{
+    front: string;
+    back: string;
+    category: string;
+    difficulty: 'easy' | 'medium' | 'hard';
+    imageUrl: string;
+  }>({
     front: '',
     back: '',
     category: '',
-    difficulty: 'medium'
+    difficulty: 'medium',
+    imageUrl: ''
   });
   
   const [searchTerm, setSearchTerm] = useState('');
@@ -85,12 +94,17 @@ export default function AdminFlashcardsPage() {
       // Ensure category is not empty
       const categoryToUse = newCard.category.trim() === '' ? 'Uncategorized' : newCard.category;
       
-      const createdCard = await createFlashcard({
+      const flashcardData = {
         front: newCard.front,
         back: newCard.back,
         category: categoryToUse,
-        difficulty: newCard.difficulty
-      });
+        difficulty: newCard.difficulty,
+        imageUrl: newCard.imageUrl || undefined // Ensure imageUrl is included
+      };
+      
+      console.log('Creating flashcard with data:', flashcardData);
+      
+      const createdCard = await createFlashcard(flashcardData);
       
       console.log('Created card:', createdCard);
       
@@ -100,7 +114,8 @@ export default function AdminFlashcardsPage() {
         front: '',
         back: '',
         category: '',
-        difficulty: 'medium'
+        difficulty: 'medium',
+        imageUrl: '' // Reset imageUrl
       });
       
       setShowAddCard(false);
@@ -122,10 +137,13 @@ export default function AdminFlashcardsPage() {
         front: editingCard.front,
         back: editingCard.back,
         category: categoryToUse,
-        difficulty: editingCard.difficulty
+        difficulty: editingCard.difficulty,
+        imageUrl: editingCard.imageUrl || undefined // Use undefined instead of empty string
       };
       
       console.log('Sending update with data:', updateData);
+      console.log('Flashcard ID:', editingCard.id);
+      
       const updatedCard = await updateFlashcard(editingCard.id, updateData);
       console.log('Received updated card:', updatedCard);
       
@@ -143,7 +161,9 @@ export default function AdminFlashcardsPage() {
   
   const handleDeleteCard = async (id: string) => {
     try {
+      console.log(`Attempting to delete flashcard with ID: ${id}`);
       await deleteFlashcard(id);
+      console.log(`Successfully deleted flashcard with ID: ${id}`);
       setCards(cards.filter(card => card.id !== id));
     } catch (err) {
       console.error('Error deleting card:', err);
@@ -209,33 +229,48 @@ export default function AdminFlashcardsPage() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th> */}
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Front</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Back</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Difficulty</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Front</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Back</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Difficulty</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Image</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredCards.map(card => (
                   <tr key={card.id}>
-                    {/* <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{card.id}</td> */}
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{card.front}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{card.back}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{card.category}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                        ${card.difficulty === 'easy' ? 'bg-green-100 text-green-800' : 
-                          card.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-800' : 
-                          'bg-red-100 text-red-800'}`}>
-                        {card.difficulty}
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{card.back}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{card.category}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full 
+                              ${card.difficulty === 'easy' ? 'bg-green-100 text-green-800' : 
+                                card.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-800' : 
+                                'bg-red-100 text-red-800'}`}>
+                      {card.difficulty}
                       </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {card.imageUrl ? (
+                        <div className="h-10 w-10 rounded-md overflow-hidden bg-gray-100">
+                          <img 
+                            src={card.imageUrl} 
+                            alt="Thumbnail" 
+                            className="h-full w-full object-cover"
+                            onError={(e) => {
+                              e.currentTarget.src = '/placeholder-image.png';
+                            }}
+                          />
+                        </div>
+                      ) : (
+                        <span className="text-gray-400">No image</span>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <button 
                         onClick={() => handleEditClick(card)}
-                        className="text-indigo-600 hover:text-indigo-900  mr-4"
+                        className="text-indigo-600 hover:text-indigo-900 mr-4"
                       >
                         Edit
                       </button>
@@ -291,6 +326,29 @@ export default function AdminFlashcardsPage() {
                     value={newCard.back}
                     onChange={(e) => setNewCard({...newCard, back: e.target.value})}
                   />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Image URL (optional)</label>
+                  <input
+                    type="text"
+                    className="w-full p-2 border rounded-md focus:ring-[#ff6b8b] focus:border-[#ff6b8b]"
+                    placeholder="https://example.com/image.jpg"
+                    value={newCard.imageUrl || ''}
+                    onChange={(e) => setNewCard({...newCard, imageUrl: e.target.value})}
+                  />
+                  {newCard.imageUrl && (
+                    <div className="mt-2 relative w-full h-40 bg-gray-100 rounded-md overflow-hidden">
+                      <img 
+                        src={newCard.imageUrl} 
+                        alt="Preview" 
+                        className="object-contain w-full h-full"
+                        onError={(e) => {
+                          e.currentTarget.src = '/placeholder-image.png';
+                          e.currentTarget.alt = 'Invalid image URL';
+                        }}
+                      />
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
@@ -381,6 +439,29 @@ export default function AdminFlashcardsPage() {
                     value={editingCard.back}
                     onChange={(e) => setEditingCard({...editingCard, back: e.target.value})}
                   />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Image URL (optional)</label>
+                  <input
+                    type="text"
+                    className="w-full p-2 border rounded-md focus:ring-[#ff6b8b] focus:border-[#ff6b8b]"
+                    placeholder="https://example.com/image.jpg"
+                    value={editingCard.imageUrl || ''}
+                    onChange={(e) => setEditingCard({...editingCard, imageUrl: e.target.value})}
+                  />
+                  {editingCard.imageUrl && (
+                    <div className="mt-2 relative w-full h-40 bg-gray-100 rounded-md overflow-hidden">
+                      <img 
+                        src={editingCard.imageUrl} 
+                        alt="Preview" 
+                        className="object-contain w-full h-full"
+                        onError={(e) => {
+                          e.currentTarget.src = '/placeholder-image.png';
+                          e.currentTarget.alt = 'Invalid image URL';
+                        }}
+                      />
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>

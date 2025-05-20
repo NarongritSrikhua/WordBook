@@ -139,7 +139,7 @@ export default function PracticeHistoryPage() {
           </div>
           <p className="text-xl font-medium mb-4 text-gray-800">No practice history found.</p>
           <p className="text-gray-600 mb-6">Complete some practice sessions to see your history here.</p>
-          <Link href="/practice" className="mt-4 inline-block bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors shadow-md hover:shadow-lg font-medium">
+          <Link href="/practice" className="mt-4 inline-block bg-[#FF6B8B] text-white py-3 px-6 rounded-lg hover:bg-[#ff5277] transition-colors shadow-md hover:shadow-lg font-medium">
             Start Practicing
           </Link>
         </div>

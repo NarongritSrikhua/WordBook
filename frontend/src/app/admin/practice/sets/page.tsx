@@ -45,11 +45,20 @@ export default function PracticeSetsPage() {
     if (!confirm('Are you sure you want to delete this practice set?')) return;
     
     try {
+      console.log(`Attempting to delete practice set with ID: ${id}`);
       await deletePracticeSet(id);
+      console.log(`Successfully deleted practice set with ID: ${id}`);
       setPracticeSets(practiceSets.filter(set => set.id !== id));
     } catch (err) {
       console.error('Error deleting practice set:', err);
-      setError('Failed to delete practice set');
+      
+      // Check if it's an authentication error
+      if (err instanceof Error && err.message.includes('Authentication failed')) {
+        setError('Authentication failed. Redirecting to login page...');
+        // Redirect will be handled by fetchAPI
+      } else {
+        setError('Failed to delete practice set. Please try again.');
+      }
     }
   };
 
