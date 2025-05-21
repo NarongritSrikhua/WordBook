@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { use } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { 
   getPracticeSet, 
   deletePracticeSet,
@@ -221,20 +222,15 @@ export default function PracticeSetDetailPage({ params }: { params: Promise<{ id
                           </div>
                         )}
                         
-                        {question.type === 'image' && (
-                          <div className="mb-2">
-                            {question.imageUrl && (
-                              <div className="mb-2">
-                                <Image 
-                                  src={question.imageUrl} 
-                                  alt="Question image" 
-                                  width={100} 
-                                  height={100} 
-                                  className="object-cover rounded"
-                                />
-                              </div>
-                            )}
-                            <p className="text-green-600">Answer: {question.translation}</p>
+                        {question.type === 'image' && question.imageUrl && (
+                          <div className="mb-3 h-32 relative">
+                            <Image 
+                              src={question.imageUrl}
+                              alt="Question image"
+                              fill
+                              sizes="(max-width: 768px) 100vw, 33vw"
+                              className="rounded-md object-contain"
+                            />
                           </div>
                         )}
                         

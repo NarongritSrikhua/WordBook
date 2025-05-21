@@ -626,6 +626,21 @@ export default function AdminPracticePage() {
                     />
                   </div>
                   
+                  {/* Add image preview */}
+                  {newQuestion.imageUrl && (
+                    <div className="mt-2 relative w-full h-40 bg-gray-100 rounded-md overflow-hidden">
+                      <img 
+                        src={newQuestion.imageUrl} 
+                        alt="Preview" 
+                        className="object-contain w-full h-full"
+                        onError={(e) => {
+                          e.currentTarget.src = '/placeholder-image.png';
+                          e.currentTarget.alt = 'Invalid image URL';
+                        }}
+                      />
+                    </div>
+                  )}
+                  
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Translation</label>
                     <input
@@ -954,6 +969,21 @@ export default function AdminPracticePage() {
                     />
                   </div>
                   
+                  {/* Add image preview */}
+                  {editingQuestion.imageUrl && (
+                    <div className="mt-2 relative w-full h-40 bg-gray-100 rounded-md overflow-hidden">
+                      <img 
+                        src={editingQuestion.imageUrl} 
+                        alt="Preview" 
+                        className="object-contain w-full h-full"
+                        onError={(e) => {
+                          e.currentTarget.src = '/placeholder-image.png';
+                          e.currentTarget.alt = 'Invalid image URL';
+                        }}
+                      />
+                    </div>
+                  )}
+                  
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Translation</label>
                     <input
@@ -1185,16 +1215,19 @@ export default function AdminPracticePage() {
         </div>
       )}
 
-      {/* Flashcard Selector Modal */}
+      {/* Flashcard Selector Modal with scrolling capability */}
       {showFlashcardSelector && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto">
+          <div 
+            className="fixed inset-0 bg-black opacity-50" 
+            onClick={() => setShowFlashcardSelector(false)}
+          ></div>
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md z-50 relative my-8 mx-auto max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-medium text-gray-900">Select a Flashcard</h3>
+              <h2 className="text-xl font-bold text-gray-800">Select a Flashcard</h2>
               <button
-                type="button"
                 onClick={() => setShowFlashcardSelector(false)}
-                className="text-gray-400 hover:text-gray-500"
+                className="text-gray-500 hover:text-gray-700 focus:outline-none"
               >
                 <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -1212,40 +1245,30 @@ export default function AdminPracticePage() {
               />
             </div>
             
-            <div className="overflow-y-auto flex-grow">
+            <div className="space-y-3 max-h-[400px] overflow-y-auto">
               {filteredFlashcards.length > 0 ? (
-                <div className="grid grid-cols-1 gap-4">
-                  {filteredFlashcards.map((flashcard) => (
-                    <div
-                      key={flashcard.id}
-                      className="border rounded-lg p-3 cursor-pointer hover:bg-gray-50"
-                      onClick={() => selectFlashcard(flashcard)}
-                    >
-                      <div className="font-medium">{flashcard.front}</div>
-                      <div className="text-gray-500">{flashcard.back}</div>
-                      {flashcard.category && (
-                        <div className="text-xs text-gray-400 mt-1">
-                          Category: {flashcard.category}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
+                filteredFlashcards.map((flashcard) => (
+                  <div
+                    key={flashcard.id}
+                    className="border rounded-lg p-3 cursor-pointer hover:bg-gray-50 transition-colors"
+                    onClick={() => selectFlashcard(flashcard)}
+                  >
+                    <div className="font-medium text-gray-800">{flashcard.front}</div>
+                    <div className="text-gray-500 text-sm mt-1">{flashcard.back}</div>
+                    {flashcard.category && (
+                      <div className="text-xs text-gray-400 mt-1 flex items-center">
+                        <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
+                          {flashcard.category}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                ))
               ) : (
                 <div className="text-center py-4 text-gray-500">
                   {searchTerm ? 'No flashcards match your search' : 'No flashcards available'}
                 </div>
               )}
-            </div>
-            
-            <div className="mt-4 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setShowFlashcardSelector(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
-              >
-                Cancel
-              </button>
             </div>
           </div>
         </div>
