@@ -16,6 +16,8 @@ export default function PracticeSetsPage() {
   const [practiceSets, setPracticeSets] = useState<PracticeSet[]>([]);
   const [pageLoading, setPageLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [sortField, setSortField] = useState<'createdAt' | 'updatedAt'>('updatedAt');
+  const [sortOrder, setSortOrder] = useState<'ASC' | 'DESC'>('DESC');
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
@@ -26,6 +28,15 @@ export default function PracticeSetsPage() {
       fetchPracticeSets();
     }
   }, [isAuthenticated, loading, router]);
+
+  useEffect(() => {
+    const sortedSets = [...practiceSets].sort((a, b) => {
+      const aDate = new Date(a[sortField]).getTime();
+      const bDate = new Date(b[sortField]).getTime();
+      return sortOrder === 'ASC' ? aDate - bDate : bDate - aDate;
+    });
+    setPracticeSets(sortedSets);
+  }, [sortField, sortOrder]);
 
   const fetchPracticeSets = async () => {
     try {
@@ -41,23 +52,23 @@ export default function PracticeSetsPage() {
     }
   };
 
+  const handleSort = (field: 'createdAt' | 'updatedAt') => {
+    if (field === sortField) {
+      setSortOrder(sortOrder === 'ASC' ? 'DESC' : 'ASC');
+    } else {
+      setSortField(field);
+      setSortOrder('DESC');
+    }
+  };
+
   const handleDeletePracticeSet = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this practice set?')) return;
-    
-    try {
-      console.log(`Attempting to delete practice set with ID: ${id}`);
-      await deletePracticeSet(id);
-      console.log(`Successfully deleted practice set with ID: ${id}`);
-      setPracticeSets(practiceSets.filter(set => set.id !== id));
-    } catch (err) {
-      console.error('Error deleting practice set:', err);
-      
-      // Check if it's an authentication error
-      if (err instanceof Error && err.message.includes('Authentication failed')) {
-        setError('Authentication failed. Redirecting to login page...');
-        // Redirect will be handled by fetchAPI
-      } else {
-        setError('Failed to delete practice set. Please try again.');
+    if (window.confirm('Are you sure you want to delete this practice set?')) {
+      try {
+        await deletePracticeSet(id);
+        setPracticeSets(practiceSets.filter(set => set.id !== id));
+      } catch (err) {
+        console.error('Error deleting practice set:', err);
+        setError('Failed to delete practice set');
       }
     }
   };
@@ -100,108 +111,118 @@ export default function PracticeSetsPage() {
       )}
 
       {pageLoading ? (
-        <div className="flex justify-center py-8">
+        <div className="flex justify-center items-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#ff6b8b]"></div>
+        </div>
+      ) : practiceSets.length === 0 ? (
+        <div className="text-center py-8">
+          <p className="text-gray-500">No practice sets found</p>
         </div>
       ) : (
         <div className="bg-white rounded-lg shadow overflow-hidden">
-          {practiceSets.length === 0 ? (
-            <div className="p-8 text-center">
-              <p className="text-gray-500 mb-4">No practice sets found.</p>
-              <Link 
-                href="/admin/practice/create"
-                className="bg-[#ff6b8b] hover:bg-[#ff5277] text-white px-4 py-2 rounded-md inline-block"
-              >
-                Create Your First Practice Set
-              </Link>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Difficulty</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Questions</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {practiceSets.map((set) => (
-                    <tr key={set.id}>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">{set.name}</div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm text-gray-500 max-w-xs truncate">{set.description}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full 
-                          ${set.difficulty === 'easy' ? 'bg-green-100 text-green-800' : 
-                            set.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-800' : 
-                            set.difficulty === 'hard' ? 'bg-red-100 text-red-800' :
-                            'bg-gray-100 text-gray-800'}`}>
-                          {set.difficulty ? set.difficulty.charAt(0).toUpperCase() + set.difficulty.slice(1) : 'Medium'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                          {set.category || 'Uncategorized'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full 
-                          ${set.type === 'text' ? 'bg-indigo-100 text-indigo-800' : 
-                            set.type === 'image' ? 'bg-purple-100 text-purple-800' : 
-                            set.type === 'fill' ? 'bg-pink-100 text-pink-800' :
-                            'bg-gray-100 text-gray-800'}`}>
-                          {set.type ? set.type.charAt(0).toUpperCase() + set.type.slice(1) : 'Mixed'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{set.questionIds?.length || 0}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-500">
-                          {new Date(set.createdAt).toLocaleDateString()}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex space-x-3">
-                          <Link
-                            href={`/admin/practice/sets/${set.id}`}
-                            className="text-indigo-600 hover:text-indigo-900"
-                          >
-                            View
-                          </Link>
-                          <Link
-                            href={`/admin/practice/sets/${set.id}/edit`}
-                            className="text-blue-600 hover:text-blue-900"
-                          >
-                            Edit
-                          </Link>
-                          <button
-                            onClick={() => handleDeletePracticeSet(set.id)}
-                            className="text-red-600 hover:text-red-900"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Difficulty</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Questions</th>
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                  onClick={() => handleSort('createdAt')}
+                >
+                  Created At
+                  {sortField === 'createdAt' && (
+                    <span className="ml-1">{sortOrder === 'ASC' ? '↑' : '↓'}</span>
+                  )}
+                </th>
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                  onClick={() => handleSort('updatedAt')}
+                >
+                  Updated At
+                  {sortField === 'updatedAt' && (
+                    <span className="ml-1">{sortOrder === 'ASC' ? '↑' : '↓'}</span>
+                  )}
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {practiceSets.map((set) => (
+                <tr key={set.id}>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-medium text-gray-900">{set.name}</div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="text-sm text-gray-500 max-w-xs truncate">{set.description}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full 
+                      ${set.difficulty === 'easy' ? 'bg-green-100 text-green-800' : 
+                        set.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-800' : 
+                        set.difficulty === 'hard' ? 'bg-red-100 text-red-800' :
+                        'bg-gray-100 text-gray-800'}`}>
+                      {set.difficulty ? set.difficulty.charAt(0).toUpperCase() + set.difficulty.slice(1) : 'Medium'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                      {set.category || 'Uncategorized'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full 
+                      ${set.type === 'text' ? 'bg-indigo-100 text-indigo-800' : 
+                        set.type === 'image' ? 'bg-purple-100 text-purple-800' : 
+                        set.type === 'fill' ? 'bg-pink-100 text-pink-800' :
+                        'bg-gray-100 text-gray-800'}`}>
+                      {set.type ? set.type.charAt(0).toUpperCase() + set.type.slice(1) : 'Mixed'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">{set.questionIds?.length || 0}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-500">
+                      {new Date(set.createdAt).toLocaleString()}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-500">
+                      {new Date(set.updatedAt).toLocaleString()}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <div className="flex space-x-3">
+                      <Link
+                        href={`/admin/practice/sets/${set.id}`}
+                        className="text-indigo-600 hover:text-indigo-900"
+                      >
+                        View
+                      </Link>
+                      <Link
+                        href={`/admin/practice/sets/${set.id}/edit`}
+                        className="text-blue-600 hover:text-blue-900"
+                      >
+                        Edit
+                      </Link>
+                      <button
+                        onClick={() => handleDeletePracticeSet(set.id)}
+                        className="text-red-600 hover:text-red-900"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
   );
 }
-
-

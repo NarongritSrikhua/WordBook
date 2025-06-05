@@ -44,6 +44,8 @@ export default function AdminPracticePage() {
   const [showFlashcardSelector, setShowFlashcardSelector] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredFlashcards, setFilteredFlashcards] = useState([]);
+  const [sortField, setSortField] = useState<'createdAt' | 'updatedAt'>('updatedAt');
+  const [sortOrder, setSortOrder] = useState<'ASC' | 'DESC'>('DESC');
 
   // Auth protection
   useEffect(() => {
@@ -414,6 +416,24 @@ export default function AdminPracticePage() {
     setShowFlashcardSelector(false);
   };
 
+  useEffect(() => {
+    const sortedQuestions = [...questions].sort((a, b) => {
+      const aDate = new Date(a[sortField]).getTime();
+      const bDate = new Date(b[sortField]).getTime();
+      return sortOrder === 'ASC' ? aDate - bDate : bDate - aDate;
+    });
+    setQuestions(sortedQuestions);
+  }, [sortField, sortOrder]);
+
+  const handleSort = (field: 'createdAt' | 'updatedAt') => {
+    if (field === sortField) {
+      setSortOrder(sortOrder === 'ASC' ? 'DESC' : 'ASC');
+    } else {
+      setSortField(field);
+      setSortOrder('DESC');
+    }
+  };
+
   if (loading || !isAuthenticated) {
     return (
       <div className="flex justify-center items-center min-h-screen">
@@ -469,6 +489,24 @@ export default function AdminPracticePage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Answer</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Difficulty</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                    <th 
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                      onClick={() => handleSort('createdAt')}
+                    >
+                      Created At
+                      {sortField === 'createdAt' && (
+                        <span className="ml-1">{sortOrder === 'ASC' ? '↑' : '↓'}</span>
+                      )}
+                    </th>
+                    <th 
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                      onClick={() => handleSort('updatedAt')}
+                    >
+                      Updated At
+                      {sortField === 'updatedAt' && (
+                        <span className="ml-1">{sortOrder === 'ASC' ? '↑' : '↓'}</span>
+                      )}
+                    </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
@@ -515,6 +553,12 @@ export default function AdminPracticePage() {
                         <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
                           {question.category || 'Uncategorized'}
                         </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {new Date(question.createdAt).toLocaleString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {new Date(question.updatedAt).toLocaleString()}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <button
