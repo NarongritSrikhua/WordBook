@@ -121,6 +121,15 @@ const FlashcardsClient = () => {
             .flip-card-back {
                 transform: rotateY(180deg);
             }
+            
+            /* Hide scrollbar for category bar */
+            .hide-scrollbar {
+                scrollbar-width: none; /* Firefox */
+                -ms-overflow-style: none; /* IE 10+ */
+            }
+            .hide-scrollbar::-webkit-scrollbar {
+                display: none; /* Chrome/Safari/Webkit */
+            }
         `;
         document.head.appendChild(style);
         
@@ -263,15 +272,27 @@ const FlashcardsClient = () => {
         }
     };
 
+    // Helper for horizontal scroll with mouse wheel
+    const handleCategoryBarWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+        if (e.deltaY === 0) return;
+        e.preventDefault();
+        const container = e.currentTarget;
+        container.scrollLeft += e.deltaY;
+    };
+
     return (
         <div className="container mx-auto px-4 py-8 max-w-6xl">
             {/* Header */}
             <div className="mb-8">
                 <h1 className="text-3xl font-bold text-gray-800 mb-4">Flashcards</h1>
-                <div className="flex flex-wrap gap-4 mb-4">
+                {/* Category scrollable bar */}
+                <div
+                    className="flex gap-4 mb-4 overflow-x-auto flex-nowrap hide-scrollbar"
+                    onWheel={handleCategoryBarWheel}
+                >
                     <button 
                         onClick={() => setSelectedCategory(null)}
-                        className={`px-4 py-2 rounded-full ${selectedCategory === null ? 'bg-[#FF6B8B] text-white' : 'bg-gray-100 text-gray-700'} transition-colors`}
+                        className={`px-4 py-2 rounded-full ${selectedCategory === null ? 'bg-[#FF6B8B] text-white' : 'bg-gray-100 text-gray-700'} transition-colors flex-shrink-0`}
                     >
                         All Categories
                     </button>
@@ -279,7 +300,7 @@ const FlashcardsClient = () => {
                         <button 
                             key={category}
                             onClick={() => setSelectedCategory(category)}
-                            className={`px-4 py-2 rounded-full ${selectedCategory === category ? 'bg-[#FF6B8B] text-white' : 'bg-gray-100 text-gray-700'} transition-colors`}
+                            className={`px-4 py-2 rounded-full ${selectedCategory === category ? 'bg-[#FF6B8B] text-white' : 'bg-gray-100 text-gray-700'} transition-colors flex-shrink-0`}
                         >
                             {category}
                         </button>
@@ -303,7 +324,7 @@ const FlashcardsClient = () => {
                     </div>
                     
                     {/* Only show Add Card button for authenticated users */}
-                    {isAuthenticated && (
+                    {/* {isAuthenticated && (
                         <button 
                             onClick={() => setShowAddCard(true)}
                             className="bg-[#FF6B8B] text-white px-4 py-2 rounded-lg hover:bg-[#ff5c7f] transition-colors flex items-center"
@@ -313,7 +334,7 @@ const FlashcardsClient = () => {
                             </svg>
                             Add Card
                         </button>
-                    )}
+                    )} */}
                 </div>
             </div>
             

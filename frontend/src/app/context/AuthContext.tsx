@@ -16,6 +16,7 @@ interface AuthContextType {
   loading: boolean;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<User>;
+  register: (name: string, email: string, password: string) => Promise<User>;
   logout: () => void;
 }
 
@@ -24,6 +25,7 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   isAuthenticated: false,
   login: async () => ({ id: '', name: '', email: '', role: '' }),
+  register: async () => ({ id: '', name: '', email: '', role: '' }),
   logout: () => {},
 });
 
@@ -99,6 +101,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const register = async (name: string, email: string, password: string): Promise<User> => {
+    setLoading(true);
+    try {
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name, email, password }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to register');
+      }
+
+      const data = await response.json();
+      
+      // Log the user data to debug
+      console.log('Register response data:', data);
+      
+      // Set the user in state
+      setUser(data);
+      setIsAuthenticated(true);
+      
+      // Return the user
+      return data;
+    } catch (error: any) {
+      console.error('Register error:', error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const logout = async () => {
     try {
       // Call logout API to clear server-side cookies
@@ -147,6 +184,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         loading,
         isAuthenticated,
         login,
+        register,
         logout,
       }}
     >
