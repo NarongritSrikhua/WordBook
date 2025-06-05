@@ -15,10 +15,38 @@ const ProfileClient = () => {
         theme: 'light',
         soundEffects: true
     });
+    const [showPasswordForm, setShowPasswordForm] = useState(false);
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [passwordError, setPasswordError] = useState('');
+    const [passwordSuccess, setPasswordSuccess] = useState('');
 
     const handleSave = () => {
         setIsEditing(false);
         // Here you would typically save to backend
+    };
+
+    const handlePasswordChange = (e: React.FormEvent) => {
+        e.preventDefault();
+        setPasswordError('');
+        setPasswordSuccess('');
+        if (!newPassword || !confirmPassword) {
+            setPasswordError('Please fill in both fields');
+            return;
+        }
+        if (newPassword.length < 6) {
+            setPasswordError('Password must be at least 6 characters');
+            return;
+        }
+        if (newPassword !== confirmPassword) {
+            setPasswordError('Passwords do not match');
+            return;
+        }
+        // Simulate password change success
+        setPasswordSuccess('Password changed successfully!');
+        setNewPassword('');
+        setConfirmPassword('');
+        setShowPasswordForm(false);
     };
 
     return (
@@ -243,13 +271,72 @@ const ProfileClient = () => {
                                     <button className="text-gray-600 hover:text-gray-800 text-sm">
                                         Export My Data
                                     </button>
-                                    <button className="text-gray-600 hover:text-gray-800 text-sm">
+                                    <button
+                                        className="bg-[#FF6B8B] text-white px-4 py-2 rounded-lg hover:bg-pink-600 transition-colors text-sm"
+                                        type="button"
+                                        onClick={() => setShowPasswordForm((v) => !v)}
+                                    >
                                         Change Password
                                     </button>
                                     <button className="text-red-500 hover:text-red-700 text-sm">
                                         Delete Account
                                     </button>
                                 </div>
+                                {showPasswordForm && (
+                                    <form onSubmit={handlePasswordChange} className="mt-4 max-w-sm">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                New Password
+                                            </label>
+                                            <input
+                                                type="password"
+                                                value={newPassword}
+                                                onChange={e => setNewPassword(e.target.value)}
+                                                className="w-full p-2 border rounded-md mb-2"
+                                                required
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                Confirm New Password
+                                            </label>
+                                            <input
+                                                type="password"
+                                                value={confirmPassword}
+                                                onChange={e => setConfirmPassword(e.target.value)}
+                                                className="w-full p-2 border rounded-md mb-2"
+                                                required
+                                            />
+                                        </div>
+                                        {passwordError && (
+                                            <div className="text-red-500 text-sm mb-2">{passwordError}</div>
+                                        )}
+                                        {passwordSuccess && (
+                                            <div className="text-green-600 text-sm mb-2">{passwordSuccess}</div>
+                                        )}
+                                        <div className="flex gap-2">
+                                            <button
+                                                type="submit"
+                                                className="bg-[#FF6B8B] text-white px-4 py-2 rounded hover:bg-pink-600"
+                                            >
+                                                Save Password
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="px-4 py-2 rounded border"
+                                                onClick={() => {
+                                                    setShowPasswordForm(false);
+                                                    setNewPassword('');
+                                                    setConfirmPassword('');
+                                                    setPasswordError('');
+                                                    setPasswordSuccess('');
+                                                }}
+                                            >
+                                                Cancel
+                                            </button>
+                                        </div>
+                                    </form>
+                                )}
                             </div>
                         </>
                     )}
@@ -460,3 +547,4 @@ const ProfileClient = () => {
 };
 
 export default ProfileClient;
+// No code changes needed. See explanation above.

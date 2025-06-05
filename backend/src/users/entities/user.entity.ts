@@ -30,6 +30,14 @@ export class User {
   })
   role: UserRole;
 
+  @Column({ nullable: true })
+  @Exclude()
+  resetToken: string;
+
+  @Column({ nullable: true })
+  @Exclude()
+  resetTokenExpires: Date;
+
   @OneToMany(() => Word, (word) => word.user)
   words: Word[];
 

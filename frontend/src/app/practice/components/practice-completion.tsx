@@ -79,7 +79,6 @@ export default function PracticeCompletion({
         setIsSubmitting(false);
       }
     }
-    
     submitResult();
   }, [category, practiceSetId, totalQuestions, correctAnswers, score, timeTaken, submitted]);
   

@@ -7,6 +7,7 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserPreferencesDto } from './dto/user-preferences.dto';
 import * as bcrypt from 'bcrypt';
+import { MoreThan } from 'typeorm';
 
 @Injectable()
 export class UsersService {
@@ -52,15 +53,42 @@ export class UsersService {
     return this.usersRepository.findOne({ where: { email } });
   }
 
+  async findByResetToken(token: string): Promise<User | null> {
+    return this.usersRepository.findOne({ 
+      where: { 
+        resetToken: token,
+        resetTokenExpires: MoreThan(new Date())
+      } 
+    });
+  }
+
   async update(id: string, updateUserDto: UpdateUserDto): Promise<User> {
+    console.log('Updating user:', { id, updateUserDto });
+    
     const user = await this.findOne(id);
+    console.log('Found user:', { id: user.id, email: user.email });
     
     if (updateUserDto.password) {
       updateUserDto.password = await bcrypt.hash(updateUserDto.password, 10);
     }
     
     const updatedUser = this.usersRepository.merge(user, updateUserDto);
-    return this.usersRepository.save(updatedUser);
+    console.log('Merged user data:', { 
+      id: updatedUser.id, 
+      email: updatedUser.email,
+      hasResetToken: !!updatedUser.resetToken,
+      resetTokenExpires: updatedUser.resetTokenExpires
+    });
+    
+    const savedUser = await this.usersRepository.save(updatedUser);
+    console.log('Saved user:', { 
+      id: savedUser.id, 
+      email: savedUser.email,
+      hasResetToken: !!savedUser.resetToken,
+      resetTokenExpires: savedUser.resetTokenExpires
+    });
+    
+    return savedUser;
   }
 
   async remove(id: string): Promise<void> {
