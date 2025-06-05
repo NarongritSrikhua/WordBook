@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/app/context/AuthContext';
 import { getCategories, createCategory, updateCategory, deleteCategory } from '@/app/lib/api/categories';
+import { formatDate } from '@/app/lib/utils';
 
 interface Category {
   id: string;
@@ -11,6 +12,9 @@ interface Category {
   createdAt?: Date;
   updatedAt?: Date;
 }
+
+type SortField = 'name' | 'createdAt' | 'updatedAt';
+type SortOrder = 'asc' | 'desc';
 
 export default function AdminCategoriesPage() {
   const { isAuthenticated, user, loading } = useAuth();
@@ -21,6 +25,8 @@ export default function AdminCategoriesPage() {
   const [newCategoryName, setNewCategoryName] = useState('');
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [editedName, setEditedName] = useState('');
+  const [sortField, setSortField] = useState<SortField>('updatedAt');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
 
   // Auth check
   useEffect(() => {
@@ -98,6 +104,25 @@ export default function AdminCategoriesPage() {
     setEditedName(category.name);
   };
 
+  const handleSort = (field: SortField) => {
+    if (field === sortField) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder('desc');
+    }
+  };
+
+  const sortedCategories = [...categories].sort((a, b) => {
+    const aValue = a[sortField];
+    const bValue = b[sortField];
+    
+    if (!aValue || !bValue) return 0;
+    
+    const comparison = aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+    return sortOrder === 'asc' ? comparison : -comparison;
+  });
+
   if (loading || pageLoading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
@@ -147,8 +172,38 @@ export default function AdminCategoriesPage() {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Caregories
+              <th 
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort('name')}
+              >
+                <div className="flex items-center">
+                  Categories
+                  {sortField === 'name' && (
+                    <span className="ml-1">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                  )}
+                </div>
+              </th>
+              <th 
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort('createdAt')}
+              >
+                <div className="flex items-center">
+                  Created At
+                  {sortField === 'createdAt' && (
+                    <span className="ml-1">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                  )}
+                </div>
+              </th>
+              <th 
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort('updatedAt')}
+              >
+                <div className="flex items-center">
+                  Updated At
+                  {sortField === 'updatedAt' && (
+                    <span className="ml-1">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                  )}
+                </div>
               </th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Actions
@@ -156,14 +211,14 @@ export default function AdminCategoriesPage() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {categories.length === 0 ? (
+            {sortedCategories.length === 0 ? (
               <tr>
-                <td colSpan={2} className="px-6 py-4 text-center text-sm text-gray-500">
+                <td colSpan={4} className="px-6 py-4 text-center text-sm text-gray-500">
                   No categories found
                 </td>
               </tr>
             ) : (
-              categories.map((category) => (
+              sortedCategories.map((category) => (
                 <tr key={category.id}>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {editingCategory?.id === category.id ? (
@@ -178,6 +233,16 @@ export default function AdminCategoriesPage() {
                     ) : (
                       <div className="text-sm font-medium text-gray-900">{category.name}</div>
                     )}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-500">
+                      {category.createdAt ? formatDate(category.createdAt) : '-'}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-500">
+                      {category.updatedAt ? formatDate(category.updatedAt) : '-'}
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     {editingCategory?.id === category.id ? (

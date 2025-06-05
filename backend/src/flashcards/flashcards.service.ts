@@ -9,6 +9,14 @@ import { ReviewFlashcardDto } from './dto/review-flashcard.dto';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 
+interface FindAllOptions {
+  page?: number;
+  limit?: number;
+  sortField?: string;
+  sortOrder?: 'ASC' | 'DESC';
+  userId?: string;
+}
+
 @Injectable()
 export class FlashcardsService {
   constructor(
@@ -31,13 +39,34 @@ export class FlashcardsService {
   }
 
   //  userId เป็น optional
-  async findAll(userId?: string): Promise<Flashcard[]> {
+  async findAll(options: FindAllOptions = {}): Promise<{ items: Flashcard[]; totalItems: number; totalPages: number; currentPage: number }> {
+    const { page = 1, limit = 10, sortField = 'updatedAt', sortOrder = 'DESC', userId } = options;
+    
+    const queryBuilder = this.flashcardsRepository.createQueryBuilder('flashcard');
+    
     if (userId) {
-      //  flashcards ของ user ้น
-      return this.flashcardsRepository.find({ where: { userId } });
+      queryBuilder.where('flashcard.userId = :userId', { userId });
     }
-    //  public  flashcards ้หมด (จะกรองเฉพาะ  public ได้ถ้า  field)
-    return this.flashcardsRepository.find();
+    
+    // Add sorting
+    queryBuilder.orderBy(`flashcard.${sortField}`, sortOrder);
+    
+    // Add pagination
+    const skip = (page - 1) * limit;
+    queryBuilder.skip(skip).take(limit);
+    
+    // Get total count
+    const totalItems = await queryBuilder.getCount();
+    
+    // Get paginated results
+    const items = await queryBuilder.getMany();
+    
+    return {
+      items,
+      totalItems,
+      totalPages: Math.ceil(totalItems / limit),
+      currentPage: page
+    };
   }
 
   async findOne(id: string, userId: string): Promise<Flashcard> {

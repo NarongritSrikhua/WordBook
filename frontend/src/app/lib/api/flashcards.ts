@@ -1,5 +1,6 @@
 // API functions for flashcards
 import { fetchAPI } from './fetch';
+import { Flashcard } from '@/app/types/flashcard';
 
 export interface Flashcard {
   id?: string;
@@ -10,11 +11,35 @@ export interface Flashcard {
   imageUrl?: string;
   lastReviewed?: Date | null;
   nextReview?: Date | null;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+interface PaginatedResponse<T> {
+  items: T[];
+  totalItems: number;
+  totalPages: number;
+  currentPage: number;
+}
+
+interface GetFlashcardsParams {
+  page?: number;
+  limit?: number;
+  sortField?: string;
+  sortOrder?: 'ASC' | 'DESC';
 }
 
 // Get all flashcards
-export async function getFlashcards(): Promise<Flashcard[]> {
-  return fetchAPI('/api/flashcards');
+export async function getFlashcards(params?: GetFlashcardsParams): Promise<PaginatedResponse<Flashcard>> {
+  const queryParams = new URLSearchParams();
+  
+  if (params?.page) queryParams.append('page', params.page.toString());
+  if (params?.limit) queryParams.append('limit', params.limit.toString());
+  if (params?.sortField) queryParams.append('sortField', params.sortField);
+  if (params?.sortOrder) queryParams.append('sortOrder', params.sortOrder);
+
+  const response = await fetchAPI(`/api/flashcards?${queryParams.toString()}`);
+  return response;
 }
 
 // Get a single flashcard

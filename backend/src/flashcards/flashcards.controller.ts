@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Put, Param, Delete, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Body, Put, Param, Delete, UseGuards, Request, Query } from '@nestjs/common';
 import { FlashcardsService } from './flashcards.service';
 import { CreateFlashcardDto } from './dto/create-flashcard.dto';
 import { UpdateFlashcardDto } from './dto/update-flashcard.dto';
@@ -14,8 +14,20 @@ export class FlashcardsController {
 
   // Public endpoint - no guard
   @Get()
-  findAll() {
-    return this.flashcardsService.findAll();
+  findAll(
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+    @Query('sortField') sortField?: string,
+    @Query('sortOrder') sortOrder?: 'ASC' | 'DESC',
+    @Request() req?: any
+  ) {
+    return this.flashcardsService.findAll({
+      page: page ? Number(page) : undefined,
+      limit: limit ? Number(limit) : undefined,
+      sortField,
+      sortOrder,
+      userId: req?.user?.userId
+    });
   }
 
   @UseGuards(JwtAuthGuard)
