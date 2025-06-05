@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { getFlashcards, createFlashcard, reviewFlashcard } from '../lib/api/flashcards';
+import { getFlashcards, createFlashcard } from '../lib/api/flashcards';
 import { useAuth } from '../context/AuthContext';
 
 interface Flashcard {
@@ -38,14 +38,15 @@ const FlashcardsClient = () => {
     
     // Check authentication and fetch flashcards
     useEffect(() => {
-        const fetchCards = async () => {
+        const fetchFlashcards = async () => {
             try {
                 setLoading(true);
                 setError(null);
-                const fetchedCards = await getFlashcards();
-                setCards(fetchedCards);
-            } catch (error) {
-                console.error('Error fetching flashcards:', error);
+                const data = await getFlashcards({ limit: 1000 });
+                setCards(Array.isArray(data.items) ? data.items : []);
+                console.log('Fetched cards:', data); // Debug log
+            } catch (err) {
+                console.error('Error fetching flashcards:', err);
                 setError('Failed to load flashcards. Please try again.');
             } finally {
                 setLoading(false);
@@ -53,7 +54,7 @@ const FlashcardsClient = () => {
         };
         
         // Fetch cards regardless of authentication status
-        fetchCards();
+        fetchFlashcards();
     }, []);
 
     // CSS animations and styles
@@ -182,6 +183,9 @@ const FlashcardsClient = () => {
         (studyMode === 'all' || (card.nextReview !== null && new Date(card.nextReview) <= new Date()))
     );
     
+    // Debug log for filteredCards
+    console.log('Filtered cards:', filteredCards);
+    
     const handleCardClick = () => {
         setIsFlipped(!isFlipped);
     };
@@ -222,16 +226,6 @@ const FlashcardsClient = () => {
         try {
             const cardId = filteredCards[currentCardIndex].id;
             const isCorrect = difficulty !== 'hard'; // Assuming 'hard' means incorrect
-            
-            const updatedCard = await reviewFlashcard(cardId, isCorrect);
-            
-            const updatedCards = [...cards];
-            const cardIndex = cards.findIndex(card => card.id === cardId);
-            
-            if (cardIndex !== -1) {
-                updatedCards[cardIndex] = updatedCard;
-                setCards(updatedCards);
-            }
             
             handleNextCard();
         } catch (error) {
@@ -278,6 +272,19 @@ const FlashcardsClient = () => {
         e.preventDefault();
         const container = e.currentTarget;
         container.scrollLeft += e.deltaY;
+    };
+
+    // Ensure cards is an array before mapping
+    const renderCards = () => {
+        if (!Array.isArray(cards)) {
+            console.error('Cards is not an array:', cards);
+            return null;
+        }
+        return cards.map((card) => (
+            <div key={card.id}>
+                {/* Render card details */}
+            </div>
+        ));
     };
 
     return (
