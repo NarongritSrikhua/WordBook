@@ -38,6 +38,9 @@ export class User {
   @Exclude()
   resetTokenExpires: Date;
 
+  @Column({ nullable: true })
+  lastLoginAt: Date;
+
   @OneToMany(() => Word, (word) => word.user)
   words: Word[];
 

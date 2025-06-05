@@ -6,6 +6,7 @@ import { AuthModule } from './auth/auth.module';
 import { WordsModule } from './words/words.module';
 import { FlashcardsModule } from './flashcards/flashcards.module';
 import { PracticeModule } from './practice/practice.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -23,7 +24,9 @@ import { PracticeModule } from './practice/practice.module';
         password: configService.get('DB_PASSWORD', 'postgres'),
         database: configService.get('DB_DATABASE', 'wordbook'),
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        synchronize: configService.get('NODE_ENV', 'development') !== 'production',
+        migrations: [__dirname + '/migrations/*{.ts,.js}'],
+        migrationsRun: true,
+        synchronize: false,
         logging: configService.get('NODE_ENV', 'development') !== 'production',
         autoLoadEntities: true,
       }),
@@ -33,6 +36,7 @@ import { PracticeModule } from './practice/practice.module';
     WordsModule,
     FlashcardsModule,
     PracticeModule,
+    AdminModule,
   ],
 })
 export class AppModule {}

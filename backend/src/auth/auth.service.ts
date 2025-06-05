@@ -33,6 +33,9 @@ export class AuthService {
   }
 
   async login(user: User) {
+    // Update lastLoginAt
+    await this.usersService.update(user.id, { lastLoginAt: new Date() });
+
     const payload = { 
       email: user.email, 
       sub: user.id,
