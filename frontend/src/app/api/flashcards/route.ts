@@ -32,13 +32,16 @@ function buildHeaders(request: NextRequest): Record<string, string> {
 // GET all flashcards
 export async function GET(request: NextRequest) {
   const backendUrl = process.env.BACKEND_URL || 'http://localhost:3001';
+  const url = new URL(request.url);
+  const queryParams = url.searchParams.toString();
+  const backendUrlWithParams = `${backendUrl}/flashcards${queryParams ? `?${queryParams}` : ''}`;
 
-  console.log(`[GET] Fetching flashcards from: ${backendUrl}/flashcards`);
+  console.log(`[GET] Fetching flashcards from: ${backendUrlWithParams}`);
 
   try {
     const headers = buildHeaders(request);
 
-    const response = await fetch(`${backendUrl}/flashcards`, {
+    const response = await fetch(backendUrlWithParams, {
       method: 'GET',
       headers,
       credentials: 'include',

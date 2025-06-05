@@ -360,11 +360,25 @@ export default function AdminPracticePage() {
   useEffect(() => {
     const fetchFlashcards = async () => {
       try {
-        const data = await getFlashcards();
-        setFlashcards(data);
-        setFilteredFlashcards(data);
+        // Set a very high limit to get all flashcards
+        const response = await getFlashcards({ 
+          limit: 9999,  // Set a very high limit to get all flashcards
+          sortField: 'updatedAt',
+          sortOrder: 'DESC'
+        });
+        console.log('Fetched flashcards response:', response); // Debug log
+        if (response && response.items) {
+          setFlashcards(response.items);
+          setFilteredFlashcards(response.items);
+        } else {
+          console.error('Invalid response format:', response);
+          setFlashcards([]);
+          setFilteredFlashcards([]);
+        }
       } catch (err) {
         console.error('Error fetching flashcards:', err);
+        setFlashcards([]);
+        setFilteredFlashcards([]);
       }
     };
     

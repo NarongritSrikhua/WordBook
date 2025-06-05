@@ -42,7 +42,11 @@ const FlashcardsClient = () => {
             try {
                 setLoading(true);
                 setError(null);
-                const data = await getFlashcards({ limit: 1000 });
+                const data = await getFlashcards({ 
+                    limit: 9999,
+                    sortField: 'updatedAt',
+                    sortOrder: 'DESC'
+                });
                 setCards(Array.isArray(data.items) ? data.items : []);
                 console.log('Fetched cards:', data); // Debug log
             } catch (err) {
