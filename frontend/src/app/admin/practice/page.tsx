@@ -27,6 +27,8 @@ export default function AdminPracticePage() {
   const [showAddQuestion, setShowAddQuestion] = useState(false);
   const [showEditQuestion, setShowEditQuestion] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<PracticeQuestion | null>(null);
+  const [questionToDelete, setQuestionToDelete] = useState<PracticeQuestion | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [categories, setCategories] = useState<string[]>([]);
   const [newQuestion, setNewQuestion] = useState<NewQuestionForm>({
     type: 'text',
@@ -44,8 +46,9 @@ export default function AdminPracticePage() {
   const [showFlashcardSelector, setShowFlashcardSelector] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredFlashcards, setFilteredFlashcards] = useState([]);
-  const [sortField, setSortField] = useState<'createdAt' | 'updatedAt'>('updatedAt');
+  const [sortField, setSortField] = useState<'createdAt' | 'updatedAt'>('createdAt');
   const [sortOrder, setSortOrder] = useState<'ASC' | 'DESC'>('DESC');
+  const [sortedQuestions, setSortedQuestions] = useState<PracticeQuestion[]>([]);
 
   // Auth protection
   useEffect(() => {
@@ -70,6 +73,13 @@ export default function AdminPracticePage() {
       setPageLoading(true);
       const data = await getPracticeQuestions();
       setQuestions(data);
+      // Apply initial sorting
+      const sorted = [...data].sort((a, b) => {
+        const aDate = new Date(a[sortField]).getTime();
+        const bDate = new Date(b[sortField]).getTime();
+        return sortOrder === 'ASC' ? aDate - bDate : bDate - aDate;
+      });
+      setSortedQuestions(sorted);
       setError(null);
     } catch (err) {
       console.error('Error fetching questions:', err);
@@ -270,16 +280,28 @@ export default function AdminPracticePage() {
     }
   };
 
-  const handleDeleteQuestion = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this question?')) return;
+  const handleDeleteClick = (question: PracticeQuestion) => {
+    setQuestionToDelete(question);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!questionToDelete) return;
     
     try {
-      await deletePracticeQuestionApi(id);
-      setQuestions(questions.filter(q => q.id !== id));
+      await deletePracticeQuestionApi(questionToDelete.id);
+      setQuestions(questions.filter(q => q.id !== questionToDelete.id));
+      setShowDeleteConfirm(false);
+      setQuestionToDelete(null);
     } catch (err) {
       console.error('Error deleting question:', err);
       setError('Failed to delete practice question');
     }
+  };
+
+  const handleDeleteCancel = () => {
+    setShowDeleteConfirm(false);
+    setQuestionToDelete(null);
   };
 
   const handleEditQuestion = (question: PracticeQuestion) => {
@@ -416,14 +438,15 @@ export default function AdminPracticePage() {
     setShowFlashcardSelector(false);
   };
 
+  // Update sorted questions when sort field or order changes
   useEffect(() => {
-    const sortedQuestions = [...questions].sort((a, b) => {
+    const sorted = [...questions].sort((a, b) => {
       const aDate = new Date(a[sortField]).getTime();
       const bDate = new Date(b[sortField]).getTime();
       return sortOrder === 'ASC' ? aDate - bDate : bDate - aDate;
     });
-    setQuestions(sortedQuestions);
-  }, [sortField, sortOrder]);
+    setSortedQuestions(sorted);
+  }, [sortField, sortOrder, questions]);
 
   const handleSort = (field: 'createdAt' | 'updatedAt') => {
     if (field === sortField) {
@@ -511,7 +534,7 @@ export default function AdminPracticePage() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {questions.map((question) => (
+                  {sortedQuestions.map((question) => (
                     <tr key={question.id}>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
@@ -568,7 +591,7 @@ export default function AdminPracticePage() {
                           Edit
                         </button>
                         <button
-                          onClick={() => handleDeleteQuestion(question.id)}
+                          onClick={() => handleDeleteClick(question)}
                           className="text-red-600 hover:text-red-900"
                         >
                           Delete
@@ -1327,6 +1350,60 @@ export default function AdminPracticePage() {
                   {searchTerm ? 'No flashcards match your search' : 'No flashcards available'}
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && questionToDelete && (
+        <div className="fixed inset-0 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 transform transition-all duration-300 scale-100 shadow-xl border border-gray-200">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-gray-900">Delete Practice Question</h3>
+              <button
+                onClick={handleDeleteCancel}
+                className="text-gray-400 hover:text-gray-500 focus:outline-none"
+              >
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="mb-6">
+              <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-red-100 rounded-full">
+                <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </div>
+              <p className="text-center text-gray-600">
+                Are you sure you want to delete this practice question?
+              </p>
+              <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                <p className="text-sm font-medium text-gray-900">Question:</p>
+                <p className="text-sm text-gray-600 mt-1">{questionToDelete.fillPrompt || questionToDelete.word}</p>
+                <p className="text-sm font-medium text-gray-900 mt-3">Answer:</p>
+                <p className="text-sm text-gray-600 mt-1">{questionToDelete.translation}</p>
+              </div>
+              <p className="text-center text-sm text-gray-500 mt-4">
+                This action cannot be undone.
+              </p>
+            </div>
+
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={handleDeleteCancel}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteConfirm}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
+              >
+                Delete Question
+              </button>
             </div>
           </div>
         </div>

@@ -9,8 +9,8 @@ import { formatDate } from '@/app/lib/utils';
 interface Category {
   id: string;
   name: string;
-  createdAt?: Date;
-  updatedAt?: Date;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 type SortField = 'name' | 'createdAt' | 'updatedAt';
@@ -27,6 +27,8 @@ export default function AdminCategoriesPage() {
   const [editedName, setEditedName] = useState('');
   const [sortField, setSortField] = useState<SortField>('updatedAt');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+  const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Auth check
   useEffect(() => {
@@ -111,6 +113,30 @@ export default function AdminCategoriesPage() {
       setSortField(field);
       setSortOrder('desc');
     }
+  };
+
+  const handleDeleteClick = (category: Category) => {
+    setCategoryToDelete(category);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!categoryToDelete) return;
+    
+    try {
+      await deleteCategory(categoryToDelete.id);
+      setCategories(categories.filter(category => category.id !== categoryToDelete.id));
+      setShowDeleteConfirm(false);
+      setCategoryToDelete(null);
+    } catch (err) {
+      console.error('Error deleting category:', err);
+      setError('Failed to delete category');
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setShowDeleteConfirm(false);
+    setCategoryToDelete(null);
   };
 
   const sortedCategories = [...categories].sort((a, b) => {
@@ -272,7 +298,7 @@ export default function AdminCategoriesPage() {
                           Edit
                         </button>
                         <button
-                          onClick={() => handleDeleteCategory(category.id)}
+                          onClick={() => handleDeleteClick(category)}
                           className="text-red-600 hover:text-red-900"
                         >
                           Delete
@@ -286,6 +312,54 @@ export default function AdminCategoriesPage() {
           </tbody>
         </table>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && categoryToDelete && (
+        <div className="fixed inset-0 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 transform transition-all duration-300 scale-100 shadow-xl border border-gray-200">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-gray-900">Delete Category</h3>
+              <button
+                onClick={handleDeleteCancel}
+                className="text-gray-400 hover:text-gray-500 focus:outline-none"
+              >
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="mb-6">
+              <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-red-100 rounded-full">
+                <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </div>
+              <p className="text-center text-gray-600">
+                Are you sure you want to delete the category <span className="font-semibold text-gray-900">"{categoryToDelete.name}"</span>?
+              </p>
+              <p className="text-center text-sm text-gray-500 mt-2">
+                This action cannot be undone. All flashcards in this category will be moved to "Uncategorized".
+              </p>
+            </div>
+
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={handleDeleteCancel}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteConfirm}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
+              >
+                Delete Category
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
