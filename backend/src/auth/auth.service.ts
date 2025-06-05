@@ -15,19 +15,42 @@ export class AuthService {
   ) {}
 
   async validateUser(email: string, password: string): Promise<any> {
+    console.log('Validating user login:', { email });
+    
     const user = await this.usersService.findByEmail(email);
+    console.log('User found:', { 
+      found: !!user,
+      userId: user?.id,
+      email: user?.email,
+      hasPassword: !!user?.password,
+      passwordLength: user?.password?.length
+    });
     
     if (!user) {
+      console.log('No user found with email:', email);
       throw new UnauthorizedException('Incorrect email or password');
     }
     
     // Always check password, even in development
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    console.log('Comparing passwords:', {
+      providedPasswordLength: password.length,
+      storedPasswordLength: user.password.length
+    });
     
-    if (!isPasswordValid) {
+    try {
+      const isPasswordValid = await bcrypt.compare(password, user.password);
+      console.log('Password comparison result:', { isPasswordValid });
+      
+      if (!isPasswordValid) {
+        console.log('Invalid password for user:', email);
+        throw new UnauthorizedException('Incorrect email or password');
+      }
+    } catch (error) {
+      console.error('Error comparing passwords:', error);
       throw new UnauthorizedException('Incorrect email or password');
     }
     
+    console.log('User validated successfully:', { userId: user.id, email: user.email });
     const { password: _, ...result } = user;
     return result;
   }
@@ -106,30 +129,63 @@ export class AuthService {
   }
 
   async resetPassword(token: string, newPassword: string): Promise<void> {
-    const user = await this.usersService.findByResetToken(token);
-    
-    if (!user) {
-      throw new UnauthorizedException('Invalid reset token');
+    try {
+      console.log('Reset password request received:', { 
+        tokenLength: token?.length,
+        hasNewPassword: !!newPassword,
+        newPasswordLength: newPassword?.length
+      });
+
+      if (!token || !newPassword) {
+        throw new Error('Token and new password are required');
+      }
+
+      const user = await this.usersService.findByResetToken(token);
+      console.log('User found by reset token:', { 
+        found: !!user,
+        userId: user?.id,
+        email: user?.email,
+        hasResetToken: !!user?.resetToken,
+        resetTokenExpires: user?.resetTokenExpires,
+        currentPasswordLength: user?.password?.length
+      });
+      
+      if (!user) {
+        console.log('No user found with the provided reset token');
+        throw new UnauthorizedException('Invalid reset token');
+      }
+
+      if (!user.resetTokenExpires) {
+        console.log('User has no reset token expiration date');
+        throw new UnauthorizedException('Reset token has expired');
+      }
+
+      const now = new Date();
+      if (user.resetTokenExpires < now) {
+        const hoursExpired = Math.round((now.getTime() - user.resetTokenExpires.getTime()) / (1000 * 60 * 60));
+        console.log('Reset token has expired:', { 
+          hoursExpired,
+          resetTokenExpires: user.resetTokenExpires,
+          now
+        });
+        throw new UnauthorizedException(`Reset token has expired ${hoursExpired} hour(s) ago`);
+      }
+
+      // Update user's password and clear reset token
+      console.log('Updating user with new password and clearing reset token');
+      await this.usersService.update(user.id, {
+        password: newPassword, // The service will handle hashing
+        resetToken: undefined,
+        resetTokenExpires: undefined
+      });
+
+      console.log('Password reset completed successfully');
+    } catch (error) {
+      console.error('Error during password reset:', error);
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+      throw new Error(`Failed to reset password: ${error.message}`);
     }
-
-    if (!user.resetTokenExpires) {
-      throw new UnauthorizedException('Reset token has expired');
-    }
-
-    const now = new Date();
-    if (user.resetTokenExpires < now) {
-      const hoursExpired = Math.round((now.getTime() - user.resetTokenExpires.getTime()) / (1000 * 60 * 60));
-      throw new UnauthorizedException(`Reset token has expired ${hoursExpired} hour(s) ago`);
-    }
-
-    // Hash new password
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-
-    // Update user's password and clear reset token
-    await this.usersService.update(user.id, {
-      password: hashedPassword,
-      resetToken: undefined,
-      resetTokenExpires: undefined,
-    });
   }
 }

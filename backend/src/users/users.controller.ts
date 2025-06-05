@@ -75,4 +75,19 @@ export class UsersController {
     
     return this.usersService.updateUserPreferences(id, preferencesDto);
   }
+
+  @UseGuards(JwtAuthGuard)
+  @Post(':id/change-password')
+  async changePassword(
+    @Param('id') id: string,
+    @Body() body: { currentPassword: string; newPassword: string },
+    @Request() req: any
+  ) {
+    // Ensure user can only change their own password
+    if (req.user.id !== id) {
+      throw new ForbiddenException('You can only change your own password');
+    }
+
+    return this.usersService.changePassword(id, body.currentPassword, body.newPassword);
+  }
 }

@@ -87,6 +87,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('Login response data:', data);
       console.log('User role from login:', data.user.role);
       
+      // Store the token in localStorage
+      if (data.access_token) {
+        localStorage.setItem('token', data.access_token);
+      }
+      
       // Set the user in state
       setUser(data.user);
       setIsAuthenticated(true);

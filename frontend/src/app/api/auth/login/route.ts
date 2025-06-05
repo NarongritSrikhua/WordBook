@@ -84,6 +84,13 @@ export async function POST(req: NextRequest) {
       sameSite: 'lax',
     });
     
+    // Log the response for debugging
+    console.log('Login response:', {
+      hasAccessToken: !!data.access_token,
+      hasToken: !!token,
+      user: data.user
+    });
+    
     return nextResponse;
   } catch (error) {
     console.error('Login error:', error);

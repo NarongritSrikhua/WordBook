@@ -4,15 +4,44 @@ import { useAuth } from '../context/AuthContext';
 import ProtectedRoute from '../components/ProtectedRoute';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+
+interface User {
+  id: string;
+  name: string;
+  email: string;
+}
+
+interface Profile {
+  name: string;
+  email: string;
+  level: string;
+  targetLanguage: string;
+  dailyGoal: string;
+  notifications: boolean;
+  theme: string;
+  soundEffects: boolean;
+  password: string;
+}
 
 export default function ProfilePage() {
   const { user, loading } = useAuth();
+  const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState('settings');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState('');
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
-  const [profile, setProfile] = useState({
+  const [profile, setProfile] = useState<Profile>({
     name: '',
     email: '',
     level: 'Intermediate',
@@ -63,9 +92,6 @@ export default function ProfilePage() {
     try {
       // Update core user data (name, password)
       if (Object.keys(updateData).length > 0) {
-        console.log('Updating user data:', updateData);
-        
-        // Get token from localStorage or cookies
         const token = localStorage.getItem('token') || '';
         
         const response = await fetch(`/api/users/${user.id}`, {
@@ -74,31 +100,24 @@ export default function ProfilePage() {
             'Content-Type': 'application/json',
             'Authorization': token ? `Bearer ${token}` : '',
           },
-          credentials: 'include', // Important: include cookies in the request
+          credentials: 'include',
           body: JSON.stringify(updateData),
         });
 
         if (!response.ok) {
           const errorData = await response.json();
-          console.error('Error updating profile:', response.status, errorData);
-          
           if (response.status === 401) {
-            // Redirect to login if unauthorized
-            window.location.href = '/login?redirect=' + encodeURIComponent(window.location.pathname);
+            router.push('/login?redirect=' + encodeURIComponent(window.location.pathname));
             throw new Error('Session expired. Please log in again.');
           }
-          
           throw new Error(errorData.message || `Failed to update profile (${response.status})`);
         }
-        
-        const data = await response.json();
-        console.log('Profile update response:', data);
       }
       
       // Save preferences to local storage
       localStorage.setItem('userPreferences', JSON.stringify(profileData));
       
-      // Optionally, also save preferences to backend
+      // Save preferences to backend
       try {
         const prefResponse = await fetch('/api/users/preferences', {
           method: 'PUT',
@@ -114,7 +133,6 @@ export default function ProfilePage() {
         }
       } catch (prefError) {
         console.warn('Could not save preferences to backend:', prefError);
-        // Non-critical error, don't show to user
       }
       
       setMessage('Profile updated successfully');
@@ -126,13 +144,97 @@ export default function ProfilePage() {
     }
   };
 
+  const handlePasswordChange = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setPasswordError('');
+    setPasswordSuccess('');
+
+    if (!user) {
+      setPasswordError('You must be logged in to change your password');
+      return;
+    }
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setPasswordError('Please fill in all fields');
+      return;
+    }
+    if (newPassword.length < 6) {
+      setPasswordError('New password must be at least 6 characters');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError('New passwords do not match');
+      return;
+    }
+
+    try {
+      // Get token from localStorage
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setPasswordError('Authentication token not found. Please try logging in again.');
+        return;
+      }
+
+      console.log('Sending change password request:', {
+        userId: user.id,
+        hasToken: !!token,
+        tokenLength: token.length
+      });
+
+      const response = await fetch(`/api/users/${user.id}/change-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ 
+          currentPassword,
+          newPassword 
+        }),
+      });
+
+      const data = await response.json();
+      console.log('Change password response:', {
+        status: response.status,
+        ok: response.ok,
+        message: data.message
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          setPasswordError('Current password is incorrect');
+        } else {
+          throw new Error(data.message || 'Failed to update password');
+        }
+        return;
+      }
+
+      setPasswordSuccess('Password changed successfully!');
+      setNewPassword('');
+      setConfirmPassword('');
+      setCurrentPassword('');
+      setShowPasswordForm(false);
+    } catch (error) {
+      console.error('Password change error:', error);
+      setPasswordError(error instanceof Error ? error.message : 'Failed to update password');
+    }
+  };
+
+  const handleCancelPasswordChange = () => {
+    setShowPasswordForm(false);
+    setNewPassword('');
+    setConfirmPassword('');
+    setCurrentPassword('');
+    setPasswordError('');
+    setPasswordSuccess('');
+  };
+
   return (
     <ProtectedRoute>
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
-          {/* Profile Header with improved visual design */}
+          {/* Profile Header */}
           <div className="bg-gradient-to-r from-[#FADADD] to-[#FF6B8B] rounded-t-2xl p-8 text-center relative overflow-hidden">
-            {/* Decorative circles in background */}
             <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 rounded-full -mr-10 -mt-10"></div>
             <div className="absolute bottom-0 left-0 w-24 h-24 bg-white opacity-10 rounded-full -ml-10 -mb-10"></div>
             
@@ -167,7 +269,7 @@ export default function ProfilePage() {
               >
                 Profile Settings
               </button>
-              <button
+              {/* <button
                 onClick={() => setActiveTab('achievements')}
                 className={`px-4 py-3 font-medium text-sm ${
                   activeTab === 'achievements'
@@ -186,12 +288,12 @@ export default function ProfilePage() {
                 }`}
               >
                 Learning Statistics
-              </button>
+              </button> */}
             </nav>
           </div>
 
           {/* Profile Content */}
-          <div className="bg-white rounded-b-2xl shadow-md p-8">
+          <div className="bg-white rounded-b-2xl p-6 shadow-lg">
             {message && (
               <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-6">
                 {message}
@@ -216,117 +318,271 @@ export default function ProfilePage() {
                   </button>
                 </div>
 
-                <div className="grid md:grid-cols-2 gap-8">
-                  <div className="space-y-6">
-                    <h3 className="text-lg font-semibold text-gray-700 border-b pb-2">Account Information</h3>
-                    
-                    {/* Name */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Name
-                      </label>
-                      {isEditing ? (
-                        <input
-                          type="text"
-                          value={profile.name}
-                          onChange={(e) => setProfile({...profile, name: e.target.value})}
-                          className="w-full p-2 border rounded-md focus:ring-[#FF6B8B] focus:border-[#FF6B8B]"
-                        />
-                      ) : (
-                        <div className="p-2 bg-gray-50 rounded-md text-gray-800">{profile.name}</div>
-                      )}
-                    </div>
+                <div className="space-y-6">
+                  <h3 className="text-lg font-semibold text-gray-700 border-b pb-2">Account Information</h3>
+                  
+                  {/* Name */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Name
+                    </label>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        value={profile.name}
+                        onChange={(e) => setProfile({...profile, name: e.target.value})}
+                        className="w-full p-2 border rounded-md focus:ring-[#FF6B8B] focus:border-[#FF6B8B]"
+                      />
+                    ) : (
+                      <div className="p-2 bg-gray-50 rounded-md text-gray-800">{profile.name}</div>
+                    )}
+                  </div>
 
-                    {/* Email - Read only */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Email
-                      </label>
-                      <div className="p-2 bg-gray-50 rounded-md text-gray-800">{profile.email}</div>
-                    </div>
+                  {/* Email - Read only */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Email
+                    </label>
+                    <div className="p-2 bg-gray-50 rounded-md text-gray-800">{profile.email}</div>
+                  </div>
 
-                    {/* Password */}
-                    {isEditing && (
+                  {/* Password Change */}
+                  {showPasswordForm ? (
+                    <form onSubmit={handlePasswordChange} className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Current Password
+                        </label>
+                        <div className="relative">
+                          <input
+                            type={showCurrentPassword ? "text" : "password"}
+                            value={currentPassword}
+                            onChange={(e) => setCurrentPassword(e.target.value)}
+                            className="w-full p-2 border rounded-md focus:ring-[#FF6B8B] focus:border-[#FF6B8B]"
+                            placeholder="Enter your current password"
+                            required
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                            className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                          >
+                            {showCurrentPassword ? (
+                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+                              </svg>
+                            ) : (
+                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              </svg>
+                            )}
+                          </button>
+                        </div>
+                      </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           New Password
                         </label>
+                        <div className="relative">
+                          <input
+                            type={showNewPassword ? "text" : "password"}
+                            value={newPassword}
+                            onChange={(e) => setNewPassword(e.target.value)}
+                            className="w-full p-2 border rounded-md focus:ring-[#FF6B8B] focus:border-[#FF6B8B]"
+                            placeholder="Enter new password"
+                            required
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowNewPassword(!showNewPassword)}
+                            className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                          >
+                            {showNewPassword ? (
+                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+                              </svg>
+                            ) : (
+                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              </svg>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Confirm New Password
+                        </label>
+                        <div className="relative">
+                          <input
+                            type={showConfirmPassword ? "text" : "password"}
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            className="w-full p-2 border rounded-md focus:ring-[#FF6B8B] focus:border-[#FF6B8B]"
+                            placeholder="Confirm new password"
+                            required
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                            className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                          >
+                            {showConfirmPassword ? (
+                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+                              </svg>
+                            ) : (
+                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              </svg>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                      {passwordError && (
+                        <div className="text-red-600 text-sm">{passwordError}</div>
+                      )}
+                      {passwordSuccess && (
+                        <div className="text-green-600 text-sm">{passwordSuccess}</div>
+                      )}
+                      <div className="flex gap-2">
+                        <button
+                          type="submit"
+                          className="bg-[#FF6B8B] text-white px-4 py-2 rounded-lg hover:bg-pink-600 transition-colors"
+                        >
+                          Update Password
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleCancelPasswordChange}
+                          className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </form>
+                  ) : (
+                    <button
+                      onClick={() => setShowPasswordForm(true)}
+                      className="text-[#FF6B8B] hover:text-pink-600"
+                    >
+                      Change Password
+                    </button>
+                  )}
+                </div>
+                
+                <div className="space-y-6 mt-8">
+                  <h3 className="text-lg font-semibold text-gray-700 border-b pb-2">Learning Preferences</h3>
+                  
+                  {/* Learning Level */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Learning Level
+                    </label>
+                    {isEditing ? (
+                      <select 
+                        value={profile.level}
+                        onChange={(e) => setProfile({...profile, level: e.target.value})}
+                        className="w-full p-2 border rounded-md focus:ring-[#FF6B8B] focus:border-[#FF6B8B]"
+                      >
+                        <option>Beginner</option>
+                        <option>Intermediate</option>
+                        <option>Advanced</option>
+                      </select>
+                    ) : (
+                      <div className="p-2 bg-gray-50 rounded-md text-gray-800">{profile.level}</div>
+                    )}
+                  </div>
+
+                  {/* Target Language */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Target Language
+                    </label>
+                    {isEditing ? (
+                      <select 
+                        value={profile.targetLanguage}
+                        onChange={(e) => setProfile({...profile, targetLanguage: e.target.value})}
+                        className="w-full p-2 border rounded-md focus:ring-[#FF6B8B] focus:border-[#FF6B8B]"
+                      >
+                        <option>Thai</option>
+                        <option>English</option>
+                        <option>Japanese</option>
+                        <option>Korean</option>
+                        <option>Chinese</option>
+                      </select>
+                    ) : (
+                      <div className="p-2 bg-gray-50 rounded-md text-gray-800">{profile.targetLanguage}</div>
+                    )}
+                  </div>
+
+                  {/* Daily Goal */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Daily Learning Goal
+                    </label>
+                    {isEditing ? (
+                      <select 
+                        value={profile.dailyGoal}
+                        onChange={(e) => setProfile({...profile, dailyGoal: e.target.value})}
+                        className="w-full p-2 border rounded-md focus:ring-[#FF6B8B] focus:border-[#FF6B8B]"
+                      >
+                        <option>15 minutes</option>
+                        <option>30 minutes</option>
+                        <option>45 minutes</option>
+                        <option>1 hour</option>
+                        <option>2 hours</option>
+                      </select>
+                    ) : (
+                      <div className="p-2 bg-gray-50 rounded-md text-gray-800">{profile.dailyGoal}</div>
+                    )}
+                  </div>
+
+                  {/* Notifications */}
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium text-gray-700">
+                      Enable Notifications
+                    </label>
+                    {isEditing ? (
+                      <label className="relative inline-flex items-center cursor-pointer">
                         <input
-                          type="password"
-                          value={profile.password}
-                          onChange={(e) => setProfile({...profile, password: e.target.value})}
-                          placeholder="Leave blank to keep current password"
-                          className="w-full p-2 border rounded-md focus:ring-[#FF6B8B] focus:border-[#FF6B8B]"
+                          type="checkbox"
+                          checked={profile.notifications}
+                          onChange={(e) => setProfile({...profile, notifications: e.target.checked})}
+                          className="sr-only peer"
                         />
+                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[#FF6B8B] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#FF6B8B]"></div>
+                      </label>
+                    ) : (
+                      <div className="p-2 bg-gray-50 rounded-md text-gray-800">
+                        {profile.notifications ? 'Enabled' : 'Disabled'}
                       </div>
                     )}
                   </div>
-                  
-                  <div className="space-y-6">
-                    <h3 className="text-lg font-semibold text-gray-700 border-b pb-2">Learning Preferences</h3>
-                    
-                    {/* Learning Level */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Learning Level
-                      </label>
-                      {isEditing ? (
-                        <select 
-                          value={profile.level}
-                          onChange={(e) => setProfile({...profile, level: e.target.value})}
-                          className="w-full p-2 border rounded-md focus:ring-[#FF6B8B] focus:border-[#FF6B8B]"
-                        >
-                          <option>Beginner</option>
-                          <option>Intermediate</option>
-                          <option>Advanced</option>
-                        </select>
-                      ) : (
-                        <div className="p-2 bg-gray-50 rounded-md text-gray-800">{profile.level}</div>
-                      )}
-                    </div>
 
-                    {/* Target Language */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Target Language
+                  {/* Sound Effects */}
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium text-gray-700">
+                      Enable Sound Effects
+                    </label>
+                    {isEditing ? (
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={profile.soundEffects}
+                          onChange={(e) => setProfile({...profile, soundEffects: e.target.checked})}
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[#FF6B8B] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#FF6B8B]"></div>
                       </label>
-                      {isEditing ? (
-                        <select 
-                          value={profile.targetLanguage}
-                          onChange={(e) => setProfile({...profile, targetLanguage: e.target.value})}
-                          className="w-full p-2 border rounded-md focus:ring-[#FF6B8B] focus:border-[#FF6B8B]"
-                        >
-                          <option>Thai</option>
-                          <option>English</option>
-                          <option>Japanese</option>
-                          <option>Spanish</option>
-                          <option>French</option>
-                        </select>
-                      ) : (
-                        <div className="p-2 bg-gray-50 rounded-md text-gray-800">{profile.targetLanguage}</div>
-                      )}
-                    </div>
-
-                    {/* Daily Goal */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Daily Learning Goal
-                      </label>
-                      {isEditing ? (
-                        <select 
-                          value={profile.dailyGoal}
-                          onChange={(e) => setProfile({...profile, dailyGoal: e.target.value})}
-                          className="w-full p-2 border rounded-md focus:ring-[#FF6B8B] focus:border-[#FF6B8B]"
-                        >
-                          <option>15 minutes</option>
-                          <option>30 minutes</option>
-                          <option>45 minutes</option>
-                          <option>1 hour</option>
-                        </select>
-                      ) : (
-                        <div className="p-2 bg-gray-50 rounded-md text-gray-800">{profile.dailyGoal}</div>
-                      )}
-                    </div>
+                    ) : (
+                      <div className="p-2 bg-gray-50 rounded-md text-gray-800">
+                        {profile.soundEffects ? 'Enabled' : 'Disabled'}
+                      </div>
+                    )}
                   </div>
                 </div>
               </>
@@ -358,26 +614,24 @@ export default function ProfilePage() {
                 {/* Achievement Badges */}
                 <h3 className="text-lg font-semibold text-gray-700 mb-4">Earned Badges</h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                  {/* First badge */}
                   <div className="bg-white border rounded-lg p-4 text-center">
                     <div className="w-16 h-16 bg-[#FADADD] rounded-full flex items-center justify-center mx-auto mb-3">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-[#FF6B8B]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                     </div>
-                    <h4 className="font-medium text-gray-800">First Steps</h4>
-                    <p className="text-xs text-gray-500">Complete your first lesson</p>
+                    <h4 className="font-medium text-gray-800">Time Keeper</h4>
+                    <p className="text-xs text-gray-500">Study for 7 days in a row</p>
                   </div>
                   
-                  {/* Locked badge example */}
-                  <div className="bg-white border rounded-lg p-4 text-center opacity-50">
-                    <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-3">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  <div className="bg-white border rounded-lg p-4 text-center">
+                    <div className="w-16 h-16 bg-[#FADADD] rounded-full flex items-center justify-center mx-auto mb-3">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-[#FF6B8B]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                     </div>
-                    <h4 className="font-medium text-gray-800">Speed Learner</h4>
-                    <p className="text-xs text-gray-500">Learn 50 words in a week</p>
+                    <h4 className="font-medium text-gray-800">Perfect Score</h4>
+                    <p className="text-xs text-gray-500">Get 100% on a quiz</p>
                   </div>
                 </div>
                 
@@ -399,7 +653,7 @@ export default function ProfilePage() {
                 </div>
               </>
             )}
-            
+
             {activeTab === 'statistics' && (
               <>
                 <div className="mb-6">
@@ -429,92 +683,19 @@ export default function ProfilePage() {
                 
                 {/* Weekly Activity */}
                 <h3 className="text-lg font-semibold text-gray-700 mb-4">Weekly Activity</h3>
-                <div className="bg-white border rounded-lg p-4 mb-8">
-                  <div className="flex justify-between items-end h-40 mb-2">
-                    {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, i) => (
+                <div className="bg-white border rounded-lg p-4">
+                  <div className="h-48 flex items-end justify-between">
+                    {[1, 2, 3, 4, 5, 6, 7].map((day) => (
                       <div key={day} className="flex flex-col items-center">
                         <div 
-                          className="bg-[#FF6B8B] w-8 rounded-t-md" 
-                          style={{ 
-                            height: `${[30, 45, 20, 60, 75, 40, 15][i]}%`,
-                            opacity: [0.7, 0.8, 0.6, 1, 0.9, 0.75, 0.5][i]
-                          }}
+                          className="w-8 bg-[#FF6B8B] rounded-t"
+                          style={{ height: `${Math.random() * 100}%` }}
                         ></div>
-                        <div className="text-xs text-gray-500 mt-2">{day}</div>
+                        <div className="text-xs text-gray-500 mt-2">
+                          {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][day - 1]}
+                        </div>
                       </div>
                     ))}
-                  </div>
-                </div>
-                
-                {/* Learning Focus */}
-                <h3 className="text-lg font-semibold text-gray-700 mb-4">Learning Focus</h3>
-                <div className="bg-white border rounded-lg p-4">
-                  <div className="flex flex-wrap gap-4">
-                    <div className="flex-1 min-w-[200px]">
-                      <h4 className="font-medium text-gray-700 mb-2">Vocabulary Categories</h4>
-                      <div className="space-y-2">
-                        <div>
-                          <div className="flex justify-between text-sm mb-1">
-                            <span>Greetings</span>
-                            <span>85%</span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div className="bg-[#FF6B8B] h-2 rounded-full" style={{ width: '85%' }}></div>
-                          </div>
-                        </div>
-                        <div>
-                          <div className="flex justify-between text-sm mb-1">
-                            <span>Food & Dining</span>
-                            <span>65%</span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div className="bg-[#FF6B8B] h-2 rounded-full" style={{ width: '65%' }}></div>
-                          </div>
-                        </div>
-                        <div>
-                          <div className="flex justify-between text-sm mb-1">
-                            <span>Travel</span>
-                            <span>40%</span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div className="bg-[#FF6B8B] h-2 rounded-full" style={{ width: '40%' }}></div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="flex-1 min-w-[200px]">
-                      <h4 className="font-medium text-gray-700 mb-2">Skill Distribution</h4>
-                      <div className="space-y-2">
-                        <div>
-                          <div className="flex justify-between text-sm mb-1">
-                            <span>Reading</span>
-                            <span>70%</span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div className="bg-[#FF6B8B] h-2 rounded-full" style={{ width: '70%' }}></div>
-                          </div>
-                        </div>
-                        <div>
-                          <div className="flex justify-between text-sm mb-1">
-                            <span>Listening</span>
-                            <span>55%</span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div className="bg-[#FF6B8B] h-2 rounded-full" style={{ width: '55%' }}></div>
-                          </div>
-                        </div>
-                        <div>
-                          <div className="flex justify-between text-sm mb-1">
-                            <span>Speaking</span>
-                            <span>30%</span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div className="bg-[#FF6B8B] h-2 rounded-full" style={{ width: '30%' }}></div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
                   </div>
                 </div>
               </>

@@ -98,8 +98,25 @@ export class AuthController {
 
   @Post('reset-password')
   async resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
-    await this.authService.resetPassword(resetPasswordDto.token, resetPasswordDto.newPassword);
-    return { message: 'Password has been reset successfully.' };
+    try {
+      console.log('Reset password request received in controller');
+      await this.authService.resetPassword(resetPasswordDto.token, resetPasswordDto.newPassword);
+      return { message: 'Password has been reset successfully.' };
+    } catch (error) {
+      console.error('Error in reset password controller:', error);
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+      throw new HttpException(
+        {
+          status: HttpStatus.INTERNAL_SERVER_ERROR,
+          error: 'Failed to reset password',
+          details: error.message,
+          stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
   }
 }
 

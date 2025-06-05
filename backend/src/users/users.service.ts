@@ -1,4 +1,4 @@
-import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
+import { Injectable, ConflictException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User, UserRole } from './entities/user.entity';
@@ -68,25 +68,76 @@ export class UsersService {
     const user = await this.findOne(id);
     console.log('Found user:', { id: user.id, email: user.email });
     
+    // Create a new object to hold the updates
+    const updates: Partial<User> = {};
+    
+    // Handle password update separately
     if (updateUserDto.password) {
-      updateUserDto.password = await bcrypt.hash(updateUserDto.password, 10);
+      console.log('Hashing new password');
+      const hashedPassword = await bcrypt.hash(updateUserDto.password, 10);
+      console.log('Password hashed:', {
+        originalLength: updateUserDto.password.length,
+        hashedLength: hashedPassword.length
+      });
+      updates.password = hashedPassword;
     }
     
-    const updatedUser = this.usersRepository.merge(user, updateUserDto);
-    console.log('Merged user data:', { 
-      id: updatedUser.id, 
-      email: updatedUser.email,
-      hasResetToken: !!updatedUser.resetToken,
-      resetTokenExpires: updatedUser.resetTokenExpires
+    // Handle other fields
+    if (updateUserDto.resetToken !== undefined) {
+      updates.resetToken = updateUserDto.resetToken;
+    }
+    if (updateUserDto.resetTokenExpires !== undefined) {
+      updates.resetTokenExpires = updateUserDto.resetTokenExpires;
+    }
+    if (updateUserDto.name) {
+      updates.name = updateUserDto.name;
+    }
+    if (updateUserDto.email) {
+      updates.email = updateUserDto.email;
+    }
+    if (updateUserDto.role) {
+      updates.role = updateUserDto.role;
+    }
+    if (updateUserDto.lastLoginAt) {
+      updates.lastLoginAt = updateUserDto.lastLoginAt;
+    }
+    
+    console.log('Applying updates:', { 
+      hasPassword: !!updates.password,
+      hasResetToken: updates.resetToken !== undefined,
+      hasResetTokenExpires: updates.resetTokenExpires !== undefined
     });
     
-    const savedUser = await this.usersRepository.save(updatedUser);
-    console.log('Saved user:', { 
-      id: savedUser.id, 
-      email: savedUser.email,
-      hasResetToken: !!savedUser.resetToken,
-      resetTokenExpires: savedUser.resetTokenExpires
-    });
+    // Update the user
+    Object.assign(user, updates);
+    
+    // Save the user
+    const savedUser = await this.usersRepository.save(user);
+    
+    // Verify the update
+    const verifiedUser = await this.usersRepository.findOne({ where: { id } });
+    if (verifiedUser) {
+      console.log('Verification after save:', {
+        id: verifiedUser.id,
+        email: verifiedUser.email,
+        hasPassword: !!verifiedUser.password,
+        passwordLength: verifiedUser.password?.length,
+        hasResetToken: !!verifiedUser.resetToken,
+        resetTokenExpires: verifiedUser.resetTokenExpires
+      });
+
+      // If this was a password update, verify it
+      if (updateUserDto.password) {
+        const isPasswordValid = await bcrypt.compare(updateUserDto.password, verifiedUser.password);
+        console.log('Password verification after save:', { isPasswordValid });
+        if (!isPasswordValid) {
+          throw new Error('Password verification failed after save');
+        }
+      }
+    } else {
+      console.error('Failed to verify user update - user not found after save');
+      throw new Error('Failed to verify user update');
+    }
     
     return savedUser;
   }
@@ -145,6 +196,47 @@ export class UsersService {
     }
     
     return this.preferencesRepository.save(preferences);
+  }
+
+  async changePassword(id: string, currentPassword: string, newPassword: string): Promise<User> {
+    console.log('Changing password for user:', { id });
+    
+    const user = await this.findOne(id);
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    // Verify current password
+    const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password);
+    if (!isCurrentPasswordValid) {
+      throw new UnauthorizedException('Current password is incorrect');
+    }
+
+    // Hash and update new password
+    console.log('Hashing new password');
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    console.log('Password hashed:', {
+      originalLength: newPassword.length,
+      hashedLength: hashedPassword.length
+    });
+
+    // Update user with new password
+    const updatedUser = await this.update(id, { password: newPassword });
+
+    // Verify the update
+    const verifiedUser = await this.usersRepository.findOne({ where: { id } });
+    if (verifiedUser) {
+      const isPasswordValid = await bcrypt.compare(newPassword, verifiedUser.password);
+      console.log('Password verification after save:', { isPasswordValid });
+      if (!isPasswordValid) {
+        throw new Error('Password verification failed after save');
+      }
+    } else {
+      console.error('Failed to verify user update - user not found after save');
+      throw new Error('Failed to verify user update');
+    }
+
+    return updatedUser;
   }
 }
 
