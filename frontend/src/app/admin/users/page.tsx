@@ -196,12 +196,12 @@ export default function AdminUsersPage() {
                         Make Admin
                       </button>
                     )}
-                    <button
+                    {/* <button
                       onClick={() => handleDeleteUser(user.id)}
                       className="text-red-600 hover:text-red-900"
                     >
                       Delete
-                    </button>
+                    </button> */}
                   </td>
                 </tr>
               ))}
