@@ -14,14 +14,15 @@ export async function GET(request: NextRequest) {
   try {
     // Parse query parameters
     const { searchParams } = new URL(request.url);
-    const count = searchParams.get('count') || '10';
+    const count = searchParams.get('count');
     const category = searchParams.get('category') || '';
     const difficulty = searchParams.get('difficulty') || '';
     
     // Build the query string
-    let queryString = `count=${count}`;
-    if (category) queryString += `&category=${category}`;
-    if (difficulty) queryString += `&difficulty=${difficulty}`;
+    let queryString = '';
+    if (count) queryString += `count=${count}`;
+    if (category) queryString += `${queryString ? '&' : ''}category=${category}`;
+    if (difficulty) queryString += `${queryString ? '&' : ''}difficulty=${difficulty}`;
     
     // Forward the authorization header or extract from cookie
     const authHeader = request.headers.get('authorization');
@@ -40,7 +41,7 @@ export async function GET(request: NextRequest) {
     }
     
     // Forward the request to the backend
-    const response = await fetch(`${backendUrl}/practice/questions/random?${queryString}`, {
+    const response = await fetch(`${backendUrl}/practice/questions${queryString ? `?${queryString}` : ''}`, {
       method: 'GET',
       headers,
       credentials: 'include',

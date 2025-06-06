@@ -19,6 +19,8 @@ export class FlashcardsController {
     @Query('limit') limit?: number,
     @Query('sortField') sortField?: string,
     @Query('sortOrder') sortOrder?: 'ASC' | 'DESC',
+    @Query('search') search?: string,
+    @Query('category') category?: string,
     @Request() req?: any
   ) {
     return this.flashcardsService.findAll({
@@ -26,6 +28,8 @@ export class FlashcardsController {
       limit: limit ? Number(limit) : undefined,
       sortField,
       sortOrder,
+      search,
+      category,
       userId: req?.user?.userId
     });
   }

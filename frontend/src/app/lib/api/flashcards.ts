@@ -27,6 +27,8 @@ interface GetFlashcardsParams {
   limit?: number;
   sortField?: string;
   sortOrder?: 'ASC' | 'DESC';
+  search?: string;
+  category?: string;
 }
 
 // Get all flashcards
@@ -37,6 +39,8 @@ export async function getFlashcards(params?: GetFlashcardsParams): Promise<Pagin
   if (params?.limit) queryParams.append('limit', params.limit.toString());
   if (params?.sortField) queryParams.append('sortField', params.sortField);
   if (params?.sortOrder) queryParams.append('sortOrder', params.sortOrder);
+  if (params?.search) queryParams.append('search', params.search);
+  if (params?.category) queryParams.append('category', params.category);
 
   const response = await fetchAPI(`/api/flashcards?${queryParams.toString()}`);
   return response;

@@ -59,17 +59,31 @@ export default function AdminFlashcardsPage() {
   const [cardToDelete, setCardToDelete] = useState<Flashcard | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   
+  // Update search term and reset pagination
+  const handleSearch = (value: string) => {
+    setSearchTerm(value);
+    setCurrentPage(1); // Reset to first page when searching
+  };
+
+  // Update category filter and reset pagination
+  const handleCategoryChange = (value: string) => {
+    setFilterCategory(value);
+    setCurrentPage(1); // Reset to first page when changing category
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
         
-        // Fetch flashcards with pagination
+        // Fetch flashcards with pagination and filters
         const response = await getFlashcards({
           page: currentPage,
           limit: itemsPerPage,
           sortField,
-          sortOrder
+          sortOrder,
+          search: searchTerm,
+          category: filterCategory
         });
         
         setCards(response.items);
@@ -91,7 +105,7 @@ export default function AdminFlashcardsPage() {
     };
     
     fetchData();
-  }, [currentPage, sortField, sortOrder]);
+  }, [currentPage, sortField, sortOrder, searchTerm, filterCategory]);
   
   const handleSort = (field: 'updatedAt' | 'createdAt') => {
     if (field === sortField) {
@@ -252,14 +266,14 @@ export default function AdminFlashcardsPage() {
               placeholder="Search flashcards..."
               className="w-full p-2 border rounded-md"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => handleSearch(e.target.value)}
             />
           </div>
           <div className="w-full md:w-64">
             <select
               className="w-full p-2 border rounded-md"
               value={filterCategory}
-              onChange={(e) => setFilterCategory(e.target.value)}
+              onChange={(e) => handleCategoryChange(e.target.value)}
             >
               <option value="">All Categories</option>
               {categories.map(category => (

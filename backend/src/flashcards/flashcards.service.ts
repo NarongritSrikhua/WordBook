@@ -15,6 +15,8 @@ interface FindAllOptions {
   sortField?: string;
   sortOrder?: 'ASC' | 'DESC';
   userId?: string;
+  search?: string;
+  category?: string;
 }
 
 @Injectable()
@@ -40,12 +42,24 @@ export class FlashcardsService {
 
   //  userId เป็น optional
   async findAll(options: FindAllOptions = {}): Promise<{ items: Flashcard[]; totalItems: number; totalPages: number; currentPage: number }> {
-    const { page = 1, limit = 10, sortField = 'updatedAt', sortOrder = 'DESC', userId } = options;
+    const { page = 1, limit = 10, sortField = 'updatedAt', sortOrder = 'DESC', userId, search, category } = options;
     
     const queryBuilder = this.flashcardsRepository.createQueryBuilder('flashcard');
     
     if (userId) {
       queryBuilder.where('flashcard.userId = :userId', { userId });
+    }
+
+    // Add search condition
+    if (search) {
+      queryBuilder.andWhere('(flashcard.front ILIKE :search OR flashcard.back ILIKE :search)', {
+        search: `%${search}%`
+      });
+    }
+
+    // Add category filter
+    if (category) {
+      queryBuilder.andWhere('flashcard.category = :category', { category });
     }
     
     // Add sorting

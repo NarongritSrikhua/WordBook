@@ -9,7 +9,9 @@ const nextConfig = {
       'localhost', 
       'ibb.co',
       'i.ibb.co',  // The actual image hosting domain for ibb.co
-      'image.ibb.co'
+      'image.ibb.co',
+      'static.vecteezy.com',
+      'media.istockphoto.com'
     ],
   },
 };
